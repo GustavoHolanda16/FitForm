@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treino Gerado</title>
+</head>
+<body>
+    <h2>Seu Treino Personalizado</h2>
+
+    {% for dia in treino %}
+        <h3>{{dia.dia}}</h3>
+        <ul>
+            {% for exercicio in dia.exercicios %}
+                <li>{{exercicio}}</li>
+            {% endfor %}
+        </ul>
+    {% endfor %}
+
+    <a href="{{ url_for('main.gerar_treinos') }}">Gerar outro treino</a>
+</body>
+</html>

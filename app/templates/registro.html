@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - FitForm</title>
+</head>
+<body>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <h2>Cadastro FitForm</h2>
+
+        <label for="nome">{{ form.nome.label }}</label>
+        {{ form.nome() }}
+
+        <label for="email">{{ form.email.label }}</label>
+        {{ form.email() }}
+
+        <label for="senha">{{ form.senha.label }}</label>
+        {{ form.senha() }}
+
+        <label for="altura">{{ form.altura.label }}</label>
+        {{ form.altura() }}
+
+        <label for="peso">{{ form.peso.label }}</label>
+        {{ form.peso() }}
+
+        {{ form.submit(class_='btn') }}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <p class="mensagem">{{ message }}</p>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </form>
+</body>
+</html>
