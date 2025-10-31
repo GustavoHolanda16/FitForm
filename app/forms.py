@@ -13,23 +13,23 @@ class RegistroForm(FlaskForm):
 
 class LoginForm(FlaskForm) :
     email = StringField('E-mail', validators=[DataRequired(), Email()])
-    senha = StringField('Senha',validators=[DataRequired(), Length(min=6)])
+    senha = PasswordField('Senha',validators=[DataRequired(), Length(min=6)])
     submit = SubmitField('Entrar')
 
 class GerarTreinoForm(FlaskForm):
-    nivel = SelectField('Nivel', choices=[
+    nivel = SelectField('Nível', choices=[
         ('1','Básico'),
         ('2','Intermediário'),
         ('3','Avançado')
     ], validators=[DataRequired()])
 
     objetivo = SelectField('Objetivo', choices=[
-        ('1','Hipertgrofia'),
+        ('1','Hipertrofia'),
         ('2', 'Perda de Peso'),
         ('3','Condicionamento Físico')
     ], validators=[DataRequired()])
 
-    dias = SelectField('Quantidades de dias por semana', choices=[
+    dias = SelectField('Quantidade de dias por semana', choices=[
         ('3', '3 dias'),
         ('5', '5 dias')
     ], validators=[DataRequired()])

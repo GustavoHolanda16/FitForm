@@ -71,11 +71,11 @@ def gerar_treino_personalizado(nivel,objetivo,dias):
 
     dias_treino = int(dias)
     treino_semana = []
-    dias_disponiveis = list(plano.keys())[:dias_treino]
+    dias_disponiveis = list(plano.keys())[:dias_treino]if plano else []
 
-    for dia in dias_disponiveis:
+    for i,dia in enumerate(dias_disponiveis,1):
         treino_semana.append({
-            'dia': f'Treino {dia}',
+            'dia': f'Treino {i}',
             'exercicios': plano[dia]
         })
 
