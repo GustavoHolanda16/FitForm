@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+
+{% block title %}{{ dieta.nome }} - FitForm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dia-card {
+        border-left: 5px solid #667eea;
+    }
+    .refeicao-card {
+        transition: all 0.3s;
+    }
+    .refeicao-card:hover {
+        transform: translateX(5px);
+    }
+    .macros-badge {
+        font-size: 0.8em;
+        padding: 3px 8px;
+        margin-right: 5px;
+    }
+    .tab-content {
+        min-height: 400px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>
+                <i class="bi bi-egg-fried text-primary"></i> {{ dieta.nome }}
+            </h1>
+            <p class="text-muted mb-0">
+                {{ dieta.objetivo }} | {{ dieta.calorias_diarias }} kcal/dia
+            </p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" onclick="window.print()">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+            <a href="{{ url_for('main.dietas') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+    
+    <!-- Abas -->
+    <ul class="nav nav-tabs mb-4" id="dietaTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="semana-tab" data-bs-toggle="tab" 
+                    data-bs-target="#semana" type="button">
+                <i class="bi bi-calendar-week"></i> Plano Semanal
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="compras-tab" data-bs-toggle="tab" 
+                    data-bs-target="#compras" type="button">
+                <i class="bi bi-cart"></i> Lista de Compras
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="receitas-tab" data-bs-toggle="tab" 
+                    data-bs-target="#receitas" type="button">
+                <i class="bi bi-journal-text"></i> Receitas
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="info-tab" data-bs-toggle="tab" 
+                    data-bs-target="#info" type="button">
+                <i class="bi bi-info-circle"></i> Informações
+            </button>
+        </li>
+    </ul>
+    
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content" id="dietaTabsContent">
+        <!-- Aba Plano Semanal -->
+        <div class="tab-pane fade show active" id="semana" role="tabpanel">
+            {% if plano_semanal %}
+                <div class="row">
+                    {% for dia_nome, dia_info in plano_semanal.items() %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 dia-card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    {% if dia_nome == 'segunda' %}Segunda-feira
+                                    {% elif dia_nome == 'terca' %}Terça-feira
+                                    {% elif dia_nome == 'quarta' %}Quarta-feira
+                                    {% elif dia_nome == 'quinta' %}Quinta-feira
+                                    {% elif dia_nome == 'sexta' %}Sexta-feira
+                                    {% elif dia_nome == 'sabado' %}Sábado
+                                    {% elif dia_nome == 'domingo' %}Domingo
+                                    {% else %}{{ dia_nome|title }}{% endif %}
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% for refeicao_nome, refeicao_info in dia_info.items() %}
+                                    {% if refeicao_nome not in ['total_diario'] %}
+                                    <div class="card refeicao-card mb-3">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                {% if refeicao_nome == 'cafe_manha' %}☕ Café da Manhã
+                                                {% elif refeicao_nome == 'almoco' %}🍽️ Almoço
+                                                {% elif refeicao_nome == 'lanche' %}🍎 Lanche
+                                                {% elif refeicao_nome == 'janta' %}🍲 Jantar
+                                                {% else %}{{ refeicao_nome|title }}{% endif %}
+                                            </h6>
+                                            
+                                            <p class="card-text">
+                                                <strong>{{ refeicao_info.refeicao }}</strong>
+                                            </p>
+                                            
+                                            {% if refeicao_info.ingredientes %}
+                                            <p class="small text-muted mb-2">
+                                                <strong>Ingredientes:</strong><br>
+                                                {{ refeicao_info.ingredientes|join(', ') }}
+                                            </p>
+                                            {% endif %}
+                                            
+                                            {% if refeicao_info.macros %}
+                                            <div class="mb-2">
+                                                <span class="badge macros-badge bg-info">
+                                                    P: {{ refeicao_info.macros.proteinas }}g
+                                                </span>
+                                                <span class="badge macros-badge bg-success">
+                                                    C: {{ refeicao_info.macros.carboidratos }}g
+                                                </span>
+                                                <span class="badge macros-badge bg-warning">
+                                                    G: {{ refeicao_info.macros.gorduras }}g
+                                                </span>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            <p class="mb-0 small">
+                                                <strong>{{ refeicao_info.calorias }} kcal</strong>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if dia_info.total_diario %}
+                                <div class="alert alert-info mt-3">
+                                    <strong>Total diário:</strong> 
+                                    {{ dia_info.total_diario.calorias }} kcal
+                                    <br>
+                                    <small>
+                                        P: {{ dia_info.total_diario.proteinas }}g | 
+                                        C: {{ dia_info.total_diario.carboidratos }}g | 
+                                        G: {{ dia_info.total_diario.gorduras }}g
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Plano semanal não disponível.
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Aba Lista de Compras -->
+        <div class="tab-pane fade" id="compras" role="tabpanel">
+            {% if lista_compras %}
+                <div class="row">
+                    {% for categoria in lista_compras %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">{{ categoria.categoria }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    {% for item in categoria.itens %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <input class="form-check-input me-2" type="checkbox">
+                                            {{ item.nome }}
+                                            <small class="text-muted d-block">
+                                                {{ item.quantidade }}
+                                            </small>
+                                        </div>
+                                        <span class="badge 
+                                            {% if item.prioridade == 'alta' %}bg-danger
+                                            {% elif item.prioridade == 'media' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ item.prioridade }}
+                                        </span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary" onclick="marcarTodos()">
+                        <i class="bi bi-check-all"></i> Marcar Todos
+                    </button>
+                    <button class="btn btn-secondary" onclick="desmarcarTodos()">
+                        <i class="bi bi-x-circle"></i> Desmarcar Todos
+                    </button>
+                    <button class="btn btn-success" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Imprimir Lista
+                    </button>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Lista de compras não disponível.
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Aba Receitas -->
+        <div class="tab-pane fade" id="receitas" role="tabpanel">
+            {% if receitas %}
+                <div class="row">
+                    {% for receita in receitas %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">{{ receita.nome }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <h6>Ingredientes:</h6>
+                                <ul class="mb-3">
+                                    {% for ingrediente in receita.ingredientes %}
+                                    <li>{{ ingrediente }}</li>
+                                    {% endfor %}
+                                </ul>
+                                
+                                <h6>Modo de Preparo:</h6>
+                                <p>{{ receita.preparo }}</p>
+                                
+                                {% if receita.nutricional %}
+                                <div class="alert alert-info">
+                                    <strong>Informação Nutricional:</strong><br>
+                                    {% for key, value in receita.nutricional.items() %}
+                                        {{ key|title }}: {{ value }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Receitas não disponíveis.
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Aba Informações -->
+        <div class="tab-pane fade" id="info" role="tabpanel">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Informações da Dieta</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table">
+                                <tr>
+                                    <th width="30%">Nome:</th>
+                                    <td>{{ dieta.nome }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Tipo:</th>
+                                    <td>{{ dieta.objetivo }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Calorias Diárias:</th>
+                                    <td>{{ dieta.calorias_diarias }} kcal</td>
+                                </tr>
+                                <tr>
+                                    <th>Data de Início:</th>
+                                    <td>{{ dieta.data_inicio.strftime('%d/%m/%Y') }}</td>
+                                </tr>
+                                {% if dieta.data_fim %}
+                                <tr>
+                                    <th>Data de Término:</th>
+                                    <td>{{ dieta.data_fim.strftime('%d/%m/%Y') }}</td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <th>Status:</th>
+                                    <td>
+                                        {% if dieta.ativa %}
+                                        <span class="badge bg-success">Ativa</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inativa</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <h5 class="mt-4">Dicas Gerais:</h5>
+                            <ul>
+                                <li>Beba pelo menos 2L de água por dia</li>
+                                <li>Respeite os horários das refeições</li>
+                                <li>Faça as substituições permitidas quando necessário</li>
+                                <li>Registre qualquer alteração na dieta</li>
+                                <li>Consulte um nutricionista para ajustes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0 text-white">Ações</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary">
+                                    <i class="bi bi-pencil"></i> Editar Dieta
+                                </button>
+                                <button class="btn btn-success">
+                                    <i class="bi bi-check-circle"></i> Marcar como Concluída
+                                </button>
+                                <button class="btn btn-info">
+                                    <i class="bi bi-clipboard"></i> Duplicar Dieta
+                                </button>
+                                <button class="btn btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Excluir Dieta
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mt-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">Feedback</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Como está se sentindo?</label>
+                                <select class="form-select">
+                                    <option>Ótimo!</option>
+                                    <option>Bem</option>
+                                    <option>Normal</option>
+                                    <option>Com fome</option>
+                                    <option>Sem energia</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Observações:</label>
+                                <textarea class="form-control" rows="3"></textarea>
+                            </div>
+                            <button class="btn btn-primary w-100">
+                                <i class="bi bi-send"></i> Enviar Feedback
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Controle da lista de compras
+    function marcarTodos() {
+        document.querySelectorAll('#compras input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+    }
+    
+    function desmarcarTodos() {
+        document.querySelectorAll('#compras input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+    }
+    
+    // Atualizar contagem de itens marcados
+    function atualizarContagem() {
+        const checkboxes = document.querySelectorAll('#compras input[type="checkbox"]');
+        const marcados = Array.from(checkboxes).filter(cb => cb.checked).length;
+        const total = checkboxes.length;
+        
+        let contador = document.getElementById('contadorCompras');
+        if (!contador) {
+            contador = document.createElement('div');
+            contador.id = 'contadorCompras';
+            contador.className = 'alert alert-secondary mt-3';
+            document.querySelector('#compras').appendChild(contador);
+        }
+        
+        contador.innerHTML = `
+            <i class="bi bi-cart-check"></i>
+            ${marcados}/${total} itens marcados
+            <span class="float-end">${((marcados/total)*100).toFixed(0)}%</span>
+        `;
+    }
+    
+    // Adicionar eventos aos checkboxes
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('#compras input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', atualizarContagem);
+        });
+        
+        // Inicializar contagem
+        setTimeout(atualizarContagem, 100);
+    });
+</script>
+{% endblock %}

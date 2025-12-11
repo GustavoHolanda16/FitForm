@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Minhas Medidas - FitForm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .medida-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+    .form-measure input {
+        max-width: 150px;
+    }
+    .photo-preview {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 3px solid #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-rulers"></i> Registrar Novas Medidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h6>Medidas Básicas</h6>
+                                <div class="mb-3 form-measure">
+                                    {{ form.peso.label(class="form-label") }}
+                                    <div class="input-group">
+                                        {{ form.peso(class="form-control") }}
+                                        <span class="input-group-text">kg</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3 form-measure">
+                                    {{ form.altura.label(class="form-label") }}
+                                    <div class="input-group">
+                                        {{ form.altura(class="form-control", value=current_user.altura) }}
+                                        <span class="input-group-text">m</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h6>Fotos (Opcional)</h6>
+                                
+                                <div class="mb-3">
+                                    {{ form.foto_frontal.label(class="form-label") }}
+                                    {{ form.foto_frontal(class="form-control") }}
+                                    <small class="text-muted">Foto frontal para acompanhamento visual</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.foto_lateral.label(class="form-label") }}
+                                    {{ form.foto_lateral(class="form-control") }}
+                                    <small class="text-muted">Foto lateral para acompanhamento visual</small>
+                                </div>
+                                
+                                <!-- Pré-visualização -->
+                                <div id="previewContainer" class="d-none">
+                                    <p class="mb-2">Pré-visualização:</p>
+                                    <div class="d-flex gap-3">
+                                        <img id="previewFrontal" class="photo-preview" 
+                                             src="#" alt="Pré-visualização frontal">
+                                        <img id="previewLateral" class="photo-preview" 
+                                             src="#" alt="Pré-visualização lateral">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h6 class="mb-3">Circunferências (Opcional)</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3 form-measure">
+                                {{ form.braco_direito.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.braco_direito(class="form-control") }}
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3 form-measure">
+                                {{ form.braco_esquerdo.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.braco_esquerdo(class="form-control") }}
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3 form-measure">
+                                {{ form.peitoral.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.peitoral(class="form-control") }}
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3 form-measure">
+                                {{ form.cintura.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.cintura(class="form-control") }}
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3 form-measure">
+                                {{ form.quadril.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.quadril(class="form-control") }}
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3 form-measure">
+                                {{ form.coxa_direita.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.coxa_direita(class="form-control") }}
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3 form-measure">
+                                {{ form.coxa_esquerda.label(class="form-label") }}
+                                <div class="input-group">
+                                    {{ form.coxa_esquerda(class="form-control") }}
+                                    <span class="input-group-text">cm</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.observacoes.label(class="form-label") }}
+                            {{ form.observacoes(class="form-control", rows="3", 
+                               placeholder="Observações sobre esta medição...") }}
+                        </div>
+                        
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Card de Estatísticas -->
+            <div class="card medida-card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-graph-up"></i> Estatísticas Atuais
+                    </h5>
+                    
+                    {% if historico %}
+                        {% set ultima = historico[0] %}
+                        <div class="mt-3">
+                            <p class="mb-1">
+                                <strong>IMC:</strong> 
+                                {{ "%.1f"|format(ultima.peso / (ultima.altura ** 2)) }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Peso:</strong> {{ ultima.peso }} kg
+                            </p>
+                            <p class="mb-1">
+                                <strong>Altura:</strong> {{ ultima.altura }} m
+                            </p>
+                            
+                            {% if ultima.cintura %}
+                            <p class="mb-1">
+                                <strong>Relação Cintura/Quadril:</strong> 
+                                {{ "%.2f"|format(ultima.cintura / ultima.quadril) if ultima.quadril else '--' }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="mt-3">Nenhuma medida registrada ainda.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Histórico Recente -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Histórico Recente
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if historico %}
+                        <div class="list-group list-group-flush">
+                            {% for medida in historico %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>{{ medida.peso }} kg</strong>
+                                        <small class="d-block text-muted">
+                                            {{ medida.data.strftime('%d/%m/%Y') }}
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-primary">
+                                        {{ medida.cintura or '--' }} cm
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">Nenhum histórico disponível</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Pré-visualização de fotos
+    const frontalInput = document.querySelector('input[name="foto_frontal"]');
+    const lateralInput = document.querySelector('input[name="foto_lateral"]');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewFrontal = document.getElementById('previewFrontal');
+    const previewLateral = document.getElementById('previewLateral');
+    
+    function previewImage(input, previewElement) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                previewElement.src = e.target.result;
+                previewContainer.classList.remove('d-none');
+            };
+            
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+    
+    if (frontalInput) {
+        frontalInput.addEventListener('change', function() {
+            previewImage(this, previewFrontal);
+        });
+    }
+    
+    if (lateralInput) {
+        lateralInput.addEventListener('change', function() {
+            previewImage(this, previewLateral);
+        });
+    }
+    
+    // Auto-calcular altura se vazio
+    const alturaInput = document.querySelector('input[name="altura"]');
+    if (alturaInput && !alturaInput.value) {
+        alturaInput.value = {{ current_user.altura|tojson }};
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Gerar Treino Personalizado</h2>
+    <p class="text-muted">Preencha os dados abaixo para gerar seu plano de treino.</p>
+    
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    {{ form.nivel.label(class="form-label") }}
+                    {{ form.nivel(class="form-select") }}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.objetivo.label(class="form-label") }}
+                    {{ form.objetivo(class="form-select") }}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.dias.label(class="form-label") }}
+                    {{ form.dias(class="form-select") }}
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="mb-3 form-check">
+                    {{ form.usar_ia(class="form-check-input") }}
+                    {{ form.usar_ia.label(class="form-check-label") }}
+                    <small class="text-muted d-block">Usa IA do Gemini para personalização avançada</small>
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.historico.label(class="form-label") }}
+                    {{ form.historico(class="form-control", rows="4") }}
+                    <small class="text-muted">Informe lesões, preferências ou equipamentos disponíveis</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('main.perfil') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

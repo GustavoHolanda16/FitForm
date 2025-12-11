@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}{{ objetivo.titulo }} - FitForm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .progress-circle {
+        width: 150px;
+        height: 150px;
+        position: relative;
+    }
+    .progress-circle svg {
+        width: 150px;
+        height: 150px;
+        transform: rotate(-90deg);
+    }
+    .progress-circle-bg {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 10;
+    }
+    .progress-circle-fg {
+        fill: none;
+        stroke: #667eea;
+        stroke-width: 10;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 1s ease;
+    }
+    .progress-circle-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    .kpi-card {
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>
+                <i class="bi bi-bullseye text-primary"></i> {{ objetivo.titulo }}
+            </h1>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge 
+                    {% if objetivo.status == 'ativo' %}bg-success
+                    {% elif objetivo.status == 'concluido' %}bg-secondary
+                    {% else %}bg-warning{% endif %}">
+                    {{ objetivo.status|title }}
+                </span>
+                <span class="badge bg-primary">{{ objetivo.tipo|replace('_', ' ')|title }}</span>
+                {% if objetivo.data_fim %}
+                <span class="text-muted">
+                    <i class="bi bi-calendar"></i> 
+                    Até {{ objetivo.data_fim.strftime('%d/%m/%Y') }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <a href="{{ url_for('main.objetivos') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#atualizarProgressoModal">
+                <i class="bi bi-graph-up"></i> Atualizar Progresso
+            </button>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Progresso Geral -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-3 text-center">
+                            <div class="progress-circle mb-3">
+                                <svg>
+                                    <circle class="progress-circle-bg" cx="75" cy="75" r="65"/>
+                                    <circle class="progress-circle-fg" cx="75" cy="75" r="65" 
+                                            stroke-dasharray="408.4" 
+                                            stroke-dashoffset="{{ 408.4 * (1 - objetivo.progresso/100) }}"/>
+                                </svg>
+                                <div class="progress-circle-text">
+                                    {{ objetivo.progresso }}%
+                                </div>
+                            </div>
+                            <h5>Progresso Geral</h5>
+                        </div>
+                        
+                        <div class="col-md-9">
+                            <div class="mb-3">
+                                <strong>Meta:</strong> {{ objetivo.meta }}
+                            </div>
+                            
+                            {% if objetivo.descricao %}
+                            <div class="mb-3">
+                                <strong>Descrição:</strong>
+                                <p class="mb-0">{{ objetivo.descricao }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="kpi-card">
+                                        <small class="text-muted">Início</small>
+                                        <h5 class="mb-0">{{ objetivo.data_inicio.strftime('%d/%m/%Y') }}</h5>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="kpi-card">
+                                        <small class="text-muted">Término</small>
+                                        <h5 class="mb-0">
+                                            {% if objetivo.data_fim %}
+                                                {{ objetivo.data_fim.strftime('%d/%m/%Y') }}
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        </h5>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metas Semanais -->
+            {% if detalhes and detalhes.metas_semanais %}
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-week"></i> Metas Semanais
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for meta in detalhes.metas_semanais %}
+                        <div class="timeline-item mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        Semana {{ meta.semana }}: {{ meta.descricao }}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if meta.indicadores %}
+                                    <p class="mb-2">
+                                        <strong>Indicadores:</strong><br>
+                                        {% for indicador in meta.indicadores %}
+                                        <span class="badge bg-info me-1">{{ indicador }}</span>
+                                        {% endfor %}
+                                    </p>
+                                    {% endif %}
+                                    
+                                    {% if meta.treinos_recomendados %}
+                                    <p class="mb-0">
+                                        <strong>Treinos recomendados:</strong><br>
+                                        {% for treino in meta.treinos_recomendados %}
+                                        <span class="badge bg-success me-1">{{ treino }}</span>
+                                        {% endfor %}
+                                    </p>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="semana{{ meta.semana }}">
+                                        <label class="form-check-label" for="semana{{ meta.semana }}">
+                                            Marcar como concluída
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Checkpoints -->
+            {% if detalhes and detalhes.checkpoints %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-flag"></i> Checkpoints
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for checkpoint in detalhes.checkpoints %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>Semana {{ checkpoint.semana }}</h6>
+                                    <p class="mb-2">{{ checkpoint.descricao }}</p>
+                                    <p class="mb-0">
+                                        <strong>Meta esperada:</strong> {{ checkpoint.metrica_esperada }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4">
+            <!-- KPIs -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart"></i> Indicadores (KPIs)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if detalhes and detalhes.kpis %}
+                        <div class="mb-3">
+                            <strong>Principal:</strong>
+                            <span class="badge bg-primary d-block mt-1">
+                                {{ detalhes.kpis.principal|replace('_', ' ')|title }}
+                            </span>
+                        </div>
+                        
+                        {% if detalhes.kpis.secundarios %}
+                        <div>
+                            <strong>Secundários:</strong>
+                            {% for secundario in detalhes.kpis.secundarios %}
+                            <span class="badge bg-secondary d-block mt-1">
+                                {{ secundario|replace('_', ' ')|title }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted">Indicadores não definidos.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Motivação -->
+            {% if detalhes and detalhes.motivacao %}
+            <div class="card mb-4">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0 text-white">
+                        <i class="bi bi-heart"></i> Motivação
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <i class="bi bi-quote"></i> 
+                        {{ detalhes.motivacao }}
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Dicas Psicológicas -->
+            {% if detalhes and detalhes.dicas_psicologicas %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightbulb"></i> Dicas Psicológicas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        {% for dica in detalhes.dicas_psicologicas %}
+                        <li>{{ dica }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Gráfico de Medidas -->
+            {% if medidas %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-rulers"></i> Evolução
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="medidasChart" height="200"></canvas>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Ações Rápidas -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <button class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-plus"></i> Agendar Check-in
+                    </button>
+                    <button class="btn btn-outline-success">
+                        <i class="bi bi-trophy"></i> Registrar Conquista
+                    </button>
+                </div>
+                <div>
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelarObjetivoModal">
+                        <i class="bi bi-x-circle"></i> Cancelar Objetivo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Atualizar Progresso -->
+<div class="modal fade" id="atualizarProgressoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-graph-up"></i> Atualizar Progresso
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Novo Progresso (%)</label>
+                        <input type="range" class="form-range" min="0" max="100" 
+                               value="{{ objetivo.progresso }}" id="progressoRange">
+                        <div class="text-center">
+                            <span id="rangeValue" class="h4">{{ objetivo.progresso }}</span>%
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Comentários</label>
+                        <textarea class="form-control" rows="3" 
+                                  placeholder="Como está indo? Algum desafio ou conquista?"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Data da Atualização</label>
+                        <input type="date" class="form-control" value="{{ hoje }}">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary">Salvar Progresso</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cancelar Objetivo -->
+<div class="modal fade" id="cancelarObjetivoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Cancelamento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja cancelar este objetivo?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-info-circle"></i>
+                    Esta ação não pode ser desfeita. O objetivo será marcado como cancelado.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Motivo do cancelamento</label>
+                    <select class="form-select">
+                        <option>Mudança de objetivos</option>
+                        <option>Dificuldades pessoais</option>
+                        <option>Problemas de saúde</option>
+                        <option>Outro</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                <button type="button" class="btn btn-danger">Cancelar Objetivo</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Controle do range de progresso
+    const progressoRange = document.getElementById('progressoRange');
+    const rangeValue = document.getElementById('rangeValue');
+    
+    if (progressoRange && rangeValue) {
+        progressoRange.addEventListener('input', function() {
+            rangeValue.textContent = this.value;
+        });
+    }
+    
+    // Gráfico de medidas
+    {% if medidas %}
+    const ctx = document.getElementById('medidasChart').getContext('2d');
+    
+    const datas = [
+        {% for medida in medidas %}
+            "{{ medida.data.strftime('%d/%m') }}",
+        {% endfor %}
+    ];
+    
+    const pesos = [
+        {% for medida in medidas %}
+            {{ medida.peso }},
+        {% endfor %}
+    ];
+    
+    const cinturas = [
+        {% for medida in medidas %}
+            {{ medida.cintura or 'null' }},
+        {% endfor %}
+    ];
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: datas,
+            datasets: [
+                {
+                    label: 'Peso (kg)',
+                    data: pesos,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Cintura (cm)',
+                    data: cinturas,
+                    borderColor: '#ff6b6b',
+                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

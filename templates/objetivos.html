@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Objetivos - FitForm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .objetivo-card {
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .objetivo-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .badge-status {
+        font-size: 0.8em;
+        padding: 5px 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="bi bi-bullseye text-primary"></i> Meus Objetivos
+        </h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novoObjetivoModal">
+            <i class="bi bi-plus-circle"></i> Novo Objetivo
+        </button>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <select class="form-select" id="filtroStatus">
+                        <option value="todos">Todos os status</option>
+                        <option value="ativo">Ativos</option>
+                        <option value="concluido">Concluídos</option>
+                        <option value="pausado">Pausados</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="filtroTipo">
+                        <option value="todos">Todos os tipos</option>
+                        <option value="perda_peso">Perda de Peso</option>
+                        <option value="ganho_massa">Ganho de Massa</option>
+                        <option value="definicao">Definição</option>
+                        <option value="condicionamento">Condicionamento</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="filtroBusca" placeholder="Buscar objetivos...">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Grid de Objetivos -->
+    <div class="row" id="objetivosGrid">
+        {% for objetivo in objetivos %}
+        <div class="col-md-6 mb-4 objetivo-card" 
+             data-status="{{ objetivo.status }}" 
+             data-tipo="{{ objetivo.tipo }}"
+             data-nome="{{ objetivo.titulo|lower }}">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center
+                    {% if objetivo.status == 'ativo' %}bg-success
+                    {% elif objetivo.status == 'concluido' %}bg-secondary
+                    {% else %}bg-warning{% endif %} text-white">
+                    <h5 class="mb-0">{{ objetivo.titulo }}</h5>
+                    <span class="badge bg-light text-dark">
+                        {{ objetivo.progresso }}%
+                    </span>
+                </div>
+                
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Tipo:</strong>
+                        <span class="badge bg-primary">
+                            {% if objetivo.tipo == 'perda_peso' %}📉 Perda de Peso
+                            {% elif objetivo.tipo == 'ganho_massa' %}💪 Ganho de Massa
+                            {% elif objetivo.tipo == 'definicao' %}✨ Definição
+                            {% elif objetivo.tipo == 'condicionamento' %}🏃 Condicionamento
+                            {% else %}{{ objetivo.tipo }}{% endif %}
+                        </span>
+                    </div>
+                    
+                    <p><strong>Meta:</strong> {{ objetivo.meta }}</p>
+                    
+                    <div class="mb-3">
+                        <strong>Progresso:</strong>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar 
+                                {% if objetivo.status == 'ativo' %}bg-success
+                                {% elif objetivo.status == 'concluido' %}bg-secondary
+                                {% else %}bg-warning{% endif %}"
+                                style="width: {{ objetivo.progresso }}%">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <small class="text-muted">Início</small><br>
+                            <strong>{{ objetivo.data_inicio.strftime('%d/%m/%Y') }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Término</small><br>
+                            <strong>
+                                {% if objetivo.data_fim %}
+                                    {{ objetivo.data_fim.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('main.detalhe_objetivo', objetivo_id=objetivo.id) }}" 
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i> Detalhes
+                        </a>
+                        
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                    type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-gear"></i> Ações
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="#">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#">
+                                        <i class="bi bi-graph-up"></i> Atualizar Progresso
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="#">
+                                        <i class="bi bi-trash"></i> Excluir
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-bullseye display-1 text-muted"></i>
+                    <h3 class="mt-3">Nenhum objetivo encontrado</h3>
+                    <p class="text-muted">
+                        Você ainda não criou nenhum objetivo fitness.
+                    </p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novoObjetivoModal">
+                        <i class="bi bi-plus-circle"></i> Criar Primeiro Objetivo
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Novo Objetivo -->
+<div class="modal fade" id="novoObjetivoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Novo Objetivo Fitness
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form method="POST" action="{{ url_for('main.objetivos') }}">
+                {{ form.hidden_tag() }}
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {{ form.titulo.label(class="form-label") }}
+                        {{ form.titulo(class="form-control", placeholder="Ex: Perder 5kg para o verão") }}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.tipo.label(class="form-label") }}
+                            {{ form.tipo(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.prazo.label(class="form-label") }}
+                            {{ form.prazo(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.meta_especifica.label(class="form-label") }}
+                        {{ form.meta_especifica(class="form-control", 
+                           placeholder="Ex: Perder 5kg, Ganhar 3kg de massa, Correr 5km em 30min") }}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.prioridade.label(class="form-label") }}
+                            {{ form.prioridade(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Usar IA</label>
+                            <div class="form-check form-switch mt-2">
+                                {{ form.usar_ia(class="form-check-input") }}
+                                <label class="form-check-label">
+                                    Gerar plano personalizado com IA
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.observacoes.label(class="form-label") }}
+                        {{ form.observacoes(class="form-control", rows="3",
+                           placeholder="Observações, limitações, preferências...") }}
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Dica:</strong> Ative a IA para receber um plano completo 
+                        com metas semanais, treinos recomendados e dicas personalizadas.
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filtros
+    document.getElementById('filtroStatus').addEventListener('change', filtrarObjetivos);
+    document.getElementById('filtroTipo').addEventListener('change', filtrarObjetivos);
+    document.getElementById('filtroBusca').addEventListener('input', filtrarObjetivos);
+    
+    function filtrarObjetivos() {
+        const status = document.getElementById('filtroStatus').value;
+        const tipo = document.getElementById('filtroTipo').value;
+        const busca = document.getElementById('filtroBusca').value.toLowerCase();
+        
+        const cards = document.querySelectorAll('.objetivo-card');
+        
+        cards.forEach(card => {
+            const cardStatus = card.dataset.status;
+            const cardTipo = card.dataset.tipo;
+            const cardNome = card.dataset.nome;
+            
+            let mostrar = true;
+            
+            if (status !== 'todos' && cardStatus !== status) {
+                mostrar = false;
+            }
+            
+            if (tipo !== 'todos' && cardTipo !== tipo) {
+                mostrar = false;
+            }
+            
+            if (busca && !cardNome.includes(busca)) {
+                mostrar = false;
+            }
+            
+            card.style.display = mostrar ? 'block' : 'none';
+        });
+    }
+    
+    // Contador de caracteres para observações
+    const textarea = document.querySelector('textarea[name="observacoes"]');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            const charCount = this.value.length;
+            const maxLength = 500;
+            
+            let counter = this.parentElement.querySelector('.char-counter');
+            if (!counter) {
+                counter = document.createElement('small');
+                counter.className = 'char-counter text-muted';
+                this.parentElement.appendChild(counter);
+            }
+            
+            counter.textContent = `${charCount}/${maxLength} caracteres`;
+            
+            if (charCount > maxLength) {
+                counter.classList.add('text-danger');
+            } else {
+                counter.classList.remove('text-danger');
+            }
+        });
+    }
+</script>
+{% endblock %}

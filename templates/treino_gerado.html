@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Seu Treino Personalizado</h2>
+        {% if usar_ia %}
+        <span class="badge bg-info">Gerado com IA</span>
+        {% endif %}
+        <a href="{{ url_for('main.gerar_treino_ia') }}" class="btn btn-outline-primary">
+            Gerar Novo Treino
+        </a>
+    </div>
+    
+    {% if treino.plano %}
+        {% for dia in treino.plano %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{ dia.dia }} - {{ dia.objetivo }}</h5>
+            </div>
+            <div class="card-body">
+                {% if dia.aquecimento %}
+                <div class="alert alert-info">
+                    <strong>Aquecimento:</strong> {{ dia.aquecimento }}
+                </div>
+                {% endif %}
+                
+                <h6>Exercícios:</h6>
+                <ul class="list-group list-group-flush">
+                    {% for exercicio in dia.exercicios %}
+                    <li class="list-group-item">
+                        <strong>{{ exercicio.nome }}</strong>
+                        <div class="text-muted">
+                            {{ exercicio.series }} séries × {{ exercicio.repeticoes }} repetições
+                            | Descanso: {{ exercicio.descanso }}
+                        </div>
+                        {% if exercicio.dica %}
+                        <small class="text-info"><i>{{ exercicio.dica }}</i></small>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                {% if dia.alongamento %}
+                <div class="mt-3">
+                    <strong>Alongamento:</strong> {{ dia.alongamento }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if treino.observacoes %}
+        <div class="alert alert-warning">
+            <h5>Observações:</h5>
+            <p>{{ treino.observacoes }}</p>
+        </div>
+        {% endif %}
+        
+        <div class="text-center mt-4">
+            <button class="btn btn-success" onclick="window.print()">
+                <i class="bi bi-printer"></i> Imprimir Treino
+            </button>
+            <a href="{{ url_for('main.analise_ia') }}" class="btn btn-info">
+                <i class="bi bi-graph-up"></i> Análise de Desempenho
+            </a>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            Não foi possível gerar um treino com os parâmetros fornecidos.
+            <a href="{{ url_for('main.gerar_treino_ia') }}">Tente novamente</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

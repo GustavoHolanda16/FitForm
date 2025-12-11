@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Meu Progresso - FitForm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        color: white;
+    }
+    .stat-card.positive {
+        background: linear-gradient(135deg, #00b09b, #96c93d);
+    }
+    .stat-card.negative {
+        background: linear-gradient(135deg, #ff416c, #ff4b2b);
+    }
+    .stat-card.neutral {
+        background: linear-gradient(135deg, #8e2de2, #4a00e0);
+    }
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: #667eea;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -36px;
+        top: 5px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: #764ba2;
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">
+        <i class="bi bi-graph-up-arrow text-primary"></i> Meu Progresso
+    </h1>
+    
+    <!-- Cards de Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card 
+                {% if variacao_peso < 0 %}positive
+                {% elif variacao_peso > 0 %}negative
+                {% else %}neutral{% endif %}">
+                <h5>Variação de Peso</h5>
+                <h2>
+                    {% if variacao_peso > 0 %}+{% endif %}
+                    {{ "%.1f"|format(variacao_peso) }} kg
+                </h2>
+                <small>Desde o início</small>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="stat-card 
+                {% if variacao_imc < 0 %}positive
+                {% elif variacao_imc > 0 %}negative
+                {% else %}neutral{% endif %}">
+                <h5>Variação do IMC</h5>
+                <h2>
+                    {% if variacao_imc > 0 %}+{% endif %}
+                    {{ "%.1f"|format(variacao_imc) }}
+                </h2>
+                <small>Desde o início</small>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="stat-card neutral">
+                <h5>Total de Medidas</h5>
+                <h2>{{ medidas|length }}</h2>
+                <small>Registros</small>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="stat-card neutral">
+                <h5>Objetivos Ativos</h5>
+                <h2>{{ objetivos|length }}</h2>
+                <small>Em andamento</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfico de Progresso -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-bar-chart"></i> Evolução do Peso
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="pesoChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Timeline de Medidas -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-event"></i> Histórico de Medidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if medidas %}
+                    <div class="timeline">
+                        {% for medida in medidas[-10:]|reverse %}
+                        <div class="timeline-item">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6>{{ medida.data.strftime('%d/%m/%Y') }}</h6>
+                                            <p class="mb-1">
+                                                <strong>Peso:</strong> {{ medida.peso }} kg
+                                                {% if medida.altura %}
+                                                | <strong>Altura:</strong> {{ medida.altura }} m
+                                                {% endif %}
+                                            </p>
+                                            
+                                            {% if medida.cintura %}
+                                            <p class="mb-1">
+                                                <strong>Cintura:</strong> {{ medida.cintura }} cm
+                                                {% if medida.quadril %}
+                                                | <strong>Quadril:</strong> {{ medida.quadril }} cm
+                                                {% endif %}
+                                            </p>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="text-end">
+                                            <span class="badge bg-primary">
+                                                IMC: {{ "%.1f"|format(medida.peso / (medida.altura ** 2)) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        Nenhuma medida registrada ainda.
+                        <a href="{{ url_for('main.medidas') }}">Registre sua primeira medida!</a>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Objetivos em Andamento -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bullseye"></i> Objetivos em Andamento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if objetivos %}
+                        {% for objetivo in objetivos if objetivo.status == 'ativo' %}
+                        <div class="mb-3">
+                            <h6>{{ objetivo.titulo }}</h6>
+                            <div class="progress mb-2" style="height: 10px;">
+                                <div class="progress-bar bg-success" 
+                                     style="width: {{ objetivo.progresso }}%">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>{{ objetivo.progresso }}% concluído</span>
+                                <span>
+                                    {% if objetivo.data_fim %}
+                                    {{ objetivo.data_fim.strftime('%d/%m') }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">
+                            Nenhum objetivo ativo.
+                            <a href="{{ url_for('main.objetivos') }}">Crie seu primeiro objetivo!</a>
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Dicas de Progresso -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightbulb"></i> Dicas para Continuar
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success"></i>
+                            Registre medidas semanalmente
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success"></i>
+                            Tire fotos para comparação visual
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success"></i>
+                            Acompanhe as circunferências
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success"></i>
+                            Compare com seus objetivos
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle text-success"></i>
+                            Celebre pequenas vitórias
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Gráfico de Peso
+    const ctx = document.getElementById('pesoChart').getContext('2d');
+    
+    // Preparar dados
+    const datas = [
+        {% for medida in medidas %}
+            "{{ medida.data.strftime('%d/%m') }}",
+        {% endfor %}
+    ];
+    
+    const pesos = [
+        {% for medida in medidas %}
+            {{ medida.peso }},
+        {% endfor %}
+    ];
+    
+    // Calcular linha de tendência
+    function calcularTendencia(pesos) {
+        const n = pesos.length;
+        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+        
+        for (let i = 0; i < n; i++) {
+            sumX += i;
+            sumY += pesos[i];
+            sumXY += i * pesos[i];
+            sumX2 += i * i;
+        }
+        
+        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+        
+        return pesos.map((_, i) => slope * i + intercept);
+    }
+    
+    const tendencia = calcularTendencia(pesos);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: datas,
+            datasets: [
+                {
+                    label: 'Peso (kg)',
+                    data: pesos,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Tendência',
+                    data: tendencia,
+                    borderColor: '#ff6b6b',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    tension: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Peso (kg)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Data'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

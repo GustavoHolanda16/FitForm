@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FitForm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-radius: 15px;
+        padding: 20px;
+        color: white;
+        height: 100%;
+        transition: transform 0.3s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-card.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .stat-card.success {
+        background: linear-gradient(135deg, #00b09b, #96c93d);
+    }
+    .stat-card.warning {
+        background: linear-gradient(135deg, #f7971e, #ffd200);
+    }
+    .stat-card.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    .stat-card.danger {
+        background: linear-gradient(135deg, #ff416c, #ff4b2b);
+    }
+    .quick-action {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        transition: all 0.3s;
+        height: 100%;
+    }
+    .quick-action:hover {
+        border-color: #667eea;
+        background-color: rgba(102, 126, 234, 0.05);
+        transform: translateY(-3px);
+    }
+    .insight-card {
+        border-left: 5px solid #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1">
+                <i class="bi bi-speedometer2 text-primary"></i> Dashboard
+            </h1>
+            <p class="text-muted mb-0">
+                Bem-vindo de volta, <strong>{{ current_user.nome }}</strong>! 
+                Aqui está seu resumo personalizado.
+            </p>
+        </div>
+        <div class="text-end">
+            <small class="text-muted d-block">
+                Última atualização: {{ hoje.strftime('%d/%m/%Y %H:%M') }}
+            </small>
+            <button class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+    
+    <!-- Cards de Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card primary">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-2">IMC</h6>
+                        <h2 class="mb-0">{{ "%.1f"|format(dados.usuario.imc) }}</h2>
+                        <small>
+                            {% if dados.usuario.imc < 18.5 %}Abaixo do peso
+                            {% elif dados.usuario.imc <= 24.9 %}Normal
+                            {% elif dados.usuario.imc <= 29.9 %}Sobrepeso
+                            {% else %}Obesidade
+                            {% endif %}
+                        </small>
+                    </div>
+                    <i class="bi bi-heart-pulse display-6 opacity-50"></i>
+                </div>
+                <div class="progress mt-3 bg-white bg-opacity-25" style="height: 5px;">
+                    <div class="progress-bar bg-white" 
+                         style="width: {{ (dados.usuario.imc/40)*100 }}%">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card success">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-2">Objetivos Ativos</h6>
+                        <h2 class="mb-0">{{ dados.objetivos_ativos|length }}</h2>
+                        <small>
+                            {% set objetivos_concluidos = objetivos|selectattr('status', 'equalto', 'concluido')|list %}
+                            {{ objetivos_concluidos|length }} concluídos
+                        </small>
+                    </div>
+                    <i class="bi bi-bullseye display-6 opacity-50"></i>
+                </div>
+                {% if dados.objetivos_ativos %}
+                <div class="progress mt-3 bg-white bg-opacity-25" style="height: 5px;">
+                    {% set progresso_medio = dados.objetivos_ativos|map(attribute='progresso')|sum / dados.objetivos_ativos|length %}
+                    <div class="progress-bar bg-white" style="width: {{ progresso_medio }}%">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card warning">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-2">Treinos Ativos</h6>
+                        <h2 class="mb-0">{{ dados.treinos_ativos }}</h2>
+                        <small>Planejados esta semana</small>
+                    </div>
+                    <i class="bi bi-activity display-6 opacity-50"></i>
+                </div>
+                <div class="mt-3">
+                    <small class="opacity-75">
+                        Próximo treino: <strong>Hoje 18:00</strong>
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card info">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-2">Dieta Ativa</h6>
+                        <h4 class="mb-0">
+                            {% if dados.dieta_ativa %}
+                                {{ dados.dieta_ativa[:20] }}
+                            {% else %}
+                                Nenhuma
+                            {% endif %}
+                        </h4>
+                        <small>
+                            {% if dados.dieta_ativa %}
+                                {{ dieta.calorias_diarias }} kcal/dia
+                            {% else %}
+                                Configure uma dieta
+                            {% endif %}
+                        </small>
+                    </div>
+                    <i class="bi bi-egg-fried display-6 opacity-50"></i>
+                </div>
+                {% if dados.dieta_ativa %}
+                <div class="mt-3">
+                    <small class="opacity-75">
+                        Próxima refeição: <strong>Almoço 12:30</strong>
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Insights da IA -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-robot"></i> Insights da IA
+                        <span class="badge bg-light text-primary ms-2">
+                            Gemini AI
+                        </span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info insight-card">
+                        <h6><i class="bi bi-lightbulb"></i> Recomendações Personalizadas</h6>
+                        <p class="mb-0">{{ insights }}</p>
+                    </div>
+                    
+                    <!-- Ações Recomendadas -->
+                    <h6 class="mt-4 mb-3">Ações Recomendadas para Hoje:</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-success">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-check-circle text-success fs-4 me-3"></i>
+                                        <div>
+                                            <h6 class="mb-1">Registrar Medidas</h6>
+                                            <p class="small text-muted mb-0">
+                                                Faça suas medições semanais
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-clock text-primary fs-4 me-3"></i>
+                                        <div>
+                                            <h6 class="mb-1">Treino de Força</h6>
+                                            <p class="small text-muted mb-0">
+                                                Programado para 18:00
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ações Rápidas -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning-charge"></i> Ações Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <a href="{{ url_for('main.gerar_treino_ia') }}" class="quick-action text-decoration-none">
+                                <i class="bi bi-plus-circle display-6 text-primary mb-2"></i>
+                                <h6>Novo Treino</h6>
+                                <small class="text-muted">Com IA</small>
+                            </a>
+                        </div>
+                        
+                        <div class="col-6">
+                            <a href="{{ url_for('main.medidas') }}" class="quick-action text-decoration-none">
+                                <i class="bi bi-rulers display-6 text-success mb-2"></i>
+                                <h6>Medidas</h6>
+                                <small class="text-muted">Registrar</small>
+                            </a>
+                        </div>
+                        
+                        <div class="col-6">
+                            <a href="{{ url_for('main.dietas') }}" class="quick-action text-decoration-none">
+                                <i class="bi bi-egg-fried display-6 text-warning mb-2"></i>
+                                <h6>Dieta</h6>
+                                <small class="text-muted">Nova</small>
+                            </a>
+                        </div>
+                        
+                        <div class="col-6">
+                            <a href="{{ url_for('main.progresso') }}" class="quick-action text-decoration-none">
+                                <i class="bi bi-graph-up display-6 text-info mb-2"></i>
+                                <h6>Progresso</h6>
+                                <small class="text-muted">Visualizar</small>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Próximos Compromissos -->
+                    <h6 class="mt-4 mb-3">
+                        <i class="bi bi-calendar-event"></i> Hoje
+                    </h6>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-activity text-success me-2"></i>
+                                <span>Treino de Força</span>
+                            </div>
+                            <span class="badge bg-primary">18:00</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-egg-fried text-warning me-2"></i>
+                                <span>Refeição #4</span>
+                            </div>
+                            <span class="badge bg-secondary">15:00</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-droplet text-info me-2"></i>
+                                <span>Meta de Água</span>
+                            </div>
+                            <span class="badge bg-success">2.5L</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Objetivos em Destaque -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bullseye text-primary"></i> Objetivos em Destaque
+                    </h5>
+                    <a href="{{ url_for('main.objetivos') }}" class="btn btn-sm btn-outline-primary">
+                        Ver Todos
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if objetivos %}
+                    <div class="row">
+                        {% for objetivo in objetivos[:3] %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h6 class="mb-0">{{ objetivo.titulo[:30] }}{% if objetivo.titulo|length > 30 %}...{% endif %}</h6>
+                                        <span class="badge 
+                                            {% if objetivo.status == 'ativo' %}bg-success
+                                            {% elif objetivo.status == 'concluido' %}bg-secondary
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ objetivo.progresso }}%
+                                        </span>
+                                    </div>
+                                    
+                                    <p class="small text-muted mb-3">{{ objetivo.meta }}</p>
+                                    
+                                    <div class="progress mb-2" style="height: 6px;">
+                                        <div class="progress-bar 
+                                            {% if objetivo.status == 'ativo' %}bg-success
+                                            {% elif objetivo.status == 'concluido' %}bg-secondary
+                                            {% else %}bg-warning{% endif %}"
+                                            style="width: {{ objetivo.progresso }}%">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between small text-muted">
+                                        <span>{{ objetivo.data_inicio.strftime('%d/%m') }}</span>
+                                        <span>
+                                            {% if objetivo.data_fim %}
+                                                {{ objetivo.data_fim.strftime('%d/%m') }}
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-transparent border-top-0">
+                                    <a href="{{ url_for('main.detalhe_objetivo', objetivo_id=objetivo.id) }}" 
+                                       class="btn btn-sm btn-outline-primary w-100">
+                                        Detalhes
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-bullseye display-1 text-muted"></i>
+                        <h5 class="mt-3">Nenhum objetivo ativo</h5>
+                        <p class="text-muted">
+                            Crie seu primeiro objetivo para começar sua jornada fitness.
+                        </p>
+                        <a href="{{ url_for('main.objetivos') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Criar Objetivo
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos Rápidos -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-calendar-heart"></i> Frequência de Treinos
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="frequenciaChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-egg-fried"></i> Distribuição de Macros
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="macrosChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Gráfico de Frequência de Treinos
+    const frequenciaCtx = document.getElementById('frequenciaChart').getContext('2d');
+    new Chart(frequenciaCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+            datasets: [{
+                label: 'Treinos Realizados',
+                data: [1, 0, 1, 1, 0, 1, 0],
+                backgroundColor: [
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(255, 99, 132, 0.8)'
+                ],
+                borderColor: [
+                    'rgb(102, 126, 234)',
+                    'rgb(255, 99, 132)',
+                    'rgb(102, 126, 234)',
+                    'rgb(102, 126, 234)',
+                    'rgb(255, 99, 132)',
+                    'rgb(102, 126, 234)',
+                    'rgb(255, 99, 132)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 2,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+    
+    // Gráfico de Distribuição de Macros
+    const macrosCtx = document.getElementById('macrosChart').getContext('2d');
+    new Chart(macrosCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Proteínas', 'Carboidratos', 'Gorduras'],
+            datasets: [{
+                data: [40, 40, 20],
+                backgroundColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 205, 86)'
+                ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.raw + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

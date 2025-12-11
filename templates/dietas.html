@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Minhas Dietas - FitForm{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dieta-card {
+        transition: all 0.3s;
+    }
+    .dieta-card:hover {
+        transform: scale(1.02);
+    }
+    .macros-chart {
+        height: 100px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>
+            <i class="bi bi-egg-fried text-primary"></i> Minhas Dietas
+        </h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novaDietaModal">
+            <i class="bi bi-plus-circle"></i> Nova Dieta
+        </button>
+    </div>
+    
+    <!-- Dietas Ativas -->
+    <div class="mb-5">
+        <h3 class="mb-3">
+            <i class="bi bi-lightning-charge text-success"></i> Dietas Ativas
+            <span class="badge bg-success">{{ dietas_ativas|length }}</span>
+        </h3>
+        
+        {% if dietas_ativas %}
+        <div class="row">
+            {% for dieta in dietas_ativas %}
+            <div class="col-md-4 mb-4">
+                <div class="card dieta-card h-100 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">{{ dieta.nome }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <span class="badge bg-primary">{{ dieta.objetivo }}</span>
+                            <span class="badge bg-info">{{ dieta.calorias_diarias }} kcal/dia</span>
+                        </div>
+                        
+                        <p class="card-text">
+                            <strong>Criada em:</strong> {{ dieta.data_inicio.strftime('%d/%m/%Y') }}
+                        </p>
+                        
+                        {% if dieta.data_fim %}
+                        <p class="card-text">
+                            <strong>Finaliza em:</strong> {{ dieta.data_fim.strftime('%d/%m/%Y') }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta.id) }}" 
+                           class="btn btn-primary btn-sm">
+                            <i class="bi bi-eye"></i> Ver Detalhes
+                        </a>
+                        <button class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-pencil"></i> Editar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            Nenhuma dieta ativa no momento. Crie uma nova dieta para começar!
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Dietas Anteriores -->
+    <div>
+        <h3 class="mb-3">
+            <i class="bi bi-archive text-secondary"></i> Dietas Anteriores
+            <span class="badge bg-secondary">{{ dietas_anteriores|length }}</span>
+        </h3>
+        
+        {% if dietas_anteriores %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>Objetivo</th>
+                        <th>Calorias</th>
+                        <th>Período</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dieta in dietas_anteriores %}
+                    <tr>
+                        <td>{{ dieta.nome }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ dieta.objetivo }}</span>
+                        </td>
+                        <td>{{ dieta.calorias_diarias }} kcal</td>
+                        <td>
+                            {{ dieta.data_inicio.strftime('%d/%m/%Y') }} 
+                            {% if dieta.data_fim %}
+                            - {{ dieta.data_fim.strftime('%d/%m/%Y') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">Nenhuma dieta anterior encontrada.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Nova Dieta -->
+<div class="modal fade" id="novaDietaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Nova Dieta
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <form method="POST" action="{{ url_for('main.dietas') }}">
+                {{ form.hidden_tag() }}
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {{ form.nome.label(class="form-label") }}
+                        {{ form.nome(class="form-control", 
+                           placeholder="Ex: Dieta de Definição Verão 2024") }}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.tipo_dieta.label(class="form-label") }}
+                            {{ form.tipo_dieta(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.objetivo_associado.label(class="form-label") }}
+                            {{ form.objetivo_associado(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.restricoes.label(class="form-label") }}
+                            {{ form.restricoes(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.preferencias.label(class="form-label") }}
+                            {{ form.preferencias(class="form-select") }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.calorias_diarias.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.calorias_diarias(class="form-control", 
+                               placeholder="Deixe em branco para cálculo automático") }}
+                            <span class="input-group-text">kcal</span>
+                        </div>
+                        <small class="text-muted">
+                            Sua necessidade calórica estimada: <strong>{{ current_user.tmb|int }} kcal</strong>
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.usar_ia(class="form-check-input") }}
+                            {{ form.usar_ia.label(class="form-check-label") }}
+                        </div>
+                        <small class="text-muted">
+                            A IA criará um plano completo com lista de compras, receitas e suplementação.
+                        </small>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Informação:</strong> Com a IA ativada, você receberá:
+                        <ul class="mb-0 mt-1">
+                            <li>Plano alimentar semanal completo</li>
+                            <li>Lista de compras organizada</li>
+                            <li>Receitas detalhadas</li>
+                            <li>Recomendações de suplementação</li>
+                            <li>Cálculo automático de macros</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
