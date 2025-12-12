@@ -45,14 +45,28 @@
                                         {{ form.peso(class="form-control") }}
                                         <span class="input-group-text">kg</span>
                                     </div>
+                                    {% if form.peso.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.peso.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
                                 </div>
                                 
                                 <div class="mb-3 form-measure">
                                     {{ form.altura.label(class="form-label") }}
                                     <div class="input-group">
-                                        {{ form.altura(class="form-control", value=current_user.altura) }}
+                                        {{ form.altura(class="form-control", value=current_user.altura if current_user.altura else '') }}
                                         <span class="input-group-text">m</span>
                                     </div>
+                                    {% if form.altura.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.altura.errors %}
+                                                <small>{{ error }}</small>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             
@@ -169,24 +183,28 @@
                         <i class="bi bi-graph-up"></i> Estatísticas Atuais
                     </h5>
                     
-                    {% if historico %}
+                    {% if historico and historico|length > 0 %}
                         {% set ultima = historico[0] %}
                         <div class="mt-3">
                             <p class="mb-1">
                                 <strong>IMC:</strong> 
-                                {{ "%.1f"|format(ultima.peso / (ultima.altura ** 2)) }}
+                                {% if ultima.peso and ultima.altura and ultima.altura > 0 %}
+                                    {{ "%.1f"|format(ultima.peso / (ultima.altura ** 2)) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
                             </p>
                             <p class="mb-1">
-                                <strong>Peso:</strong> {{ ultima.peso }} kg
+                                <strong>Peso:</strong> {{ ultima.peso|default('N/A') }} kg
                             </p>
                             <p class="mb-1">
-                                <strong>Altura:</strong> {{ ultima.altura }} m
+                                <strong>Altura:</strong> {{ ultima.altura|default('N/A') }} m
                             </p>
                             
-                            {% if ultima.cintura %}
+                            {% if ultima.cintura and ultima.quadril and ultima.quadril > 0 %}
                             <p class="mb-1">
                                 <strong>Relação Cintura/Quadril:</strong> 
-                                {{ "%.2f"|format(ultima.cintura / ultima.quadril) if ultima.quadril else '--' }}
+                                {{ "%.2f"|format(ultima.cintura / ultima.quadril) }}
                             </p>
                             {% endif %}
                         </div>
@@ -204,19 +222,19 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    {% if historico %}
+                    {% if historico and historico|length > 0 %}
                         <div class="list-group list-group-flush">
-                            {% for medida in historico %}
+                            {% for medida in historico[:5] %}
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between">
                                     <div>
-                                        <strong>{{ medida.peso }} kg</strong>
+                                        <strong>{{ medida.peso|default('N/A') }} kg</strong>
                                         <small class="d-block text-muted">
-                                            {{ medida.data.strftime('%d/%m/%Y') }}
+                                            {{ medida.data.strftime('%d/%m/%Y') if medida.data else 'Data não informada' }}
                                         </small>
                                     </div>
                                     <span class="badge bg-primary">
-                                        {{ medida.cintura or '--' }} cm
+                                        {{ medida.cintura|default('--') }} cm
                                     </span>
                                 </div>
                             </div>
@@ -242,7 +260,7 @@
     const previewLateral = document.getElementById('previewLateral');
     
     function previewImage(input, previewElement) {
-        if (input.files && input.files[0]) {
+        if (input && input.files && input.files[0]) {
             const reader = new FileReader();
             
             reader.onload = function(e) {
@@ -269,7 +287,10 @@
     // Auto-calcular altura se vazio
     const alturaInput = document.querySelector('input[name="altura"]');
     if (alturaInput && !alturaInput.value) {
-        alturaInput.value = {{ current_user.altura|tojson }};
+        // Tentar obter altura do usuário atual
+        {% if current_user and current_user.altura %}
+            alturaInput.value = {{ current_user.altura|tojson }};
+        {% endif %}
     }
 </script>
 {% endblock %}

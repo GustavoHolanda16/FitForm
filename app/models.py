@@ -2,7 +2,18 @@ from datetime import datetime
 from . import db
 from flask_login import UserMixin
 from . import login_manager
+from werkzeug.security import generate_password_hash, check_password_hash
 import json
+
+
+class LogSistema(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tipo = db.Column(db.String(50)) 
+    mensagem = db.Column(db.Text)
+    data = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    ip = db.Column(db.String(50))
+
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -25,13 +36,22 @@ class User(db.Model, UserMixin):
     dietas = db.relationship('Dieta', backref='user', lazy=True)
     medidas = db.relationship('MedidaCorporal', backref='user', lazy=True)
     
+    is_active = db.Column(db.Boolean, default=True)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    ultimo_login = db.Column(db.DateTime)
+    
     @property
     def imc(self):
-        return self.peso / (self.altura ** 2)
+        if self.altura > 0:
+            return round(self.peso / (self.altura ** 2), 2)
+        return 0
     
     @property
     def tmb(self):
         """Taxa Metabólica Basal (Harris-Benedict)"""
+        if not self.idade or self.idade <= 0:
+            return 0
+            
         if self.genero == 'masculino':
             return 88.36 + (13.4 * self.peso) + (4.8 * self.altura * 100) - (5.7 * self.idade)
         else:
@@ -40,8 +60,17 @@ class User(db.Model, UserMixin):
     @property
     def idade(self):
         if self.data_nascimento:
-            return (datetime.now().date() - self.data_nascimento).days // 365
+            today = datetime.now().date()
+            born = self.data_nascimento
+            age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+            return age
         return None
+    
+    def is_admin(self):
+        return self.role == 'admin'
+    
+    def check_password(self, password):
+        return check_password_hash(self.senha_hash, password)
 
 class Objetivo(db.Model):
     id = db.Column(db.Integer, primary_key=True)

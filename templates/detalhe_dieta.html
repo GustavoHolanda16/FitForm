@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ dieta.nome }} - FitForm{% endblock %}
+{% block title %}{{ dieta.nome if dieta else 'Dieta' }} - FitForm{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -30,11 +30,13 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1>
-                <i class="bi bi-egg-fried text-primary"></i> {{ dieta.nome }}
+                <i class="bi bi-egg-fried text-primary"></i> {{ dieta.nome if dieta else 'Dieta não encontrada' }}
             </h1>
+            {% if dieta %}
             <p class="text-muted mb-0">
-                {{ dieta.objetivo }} | {{ dieta.calorias_diarias }} kcal/dia
+                {{ dieta.objetivo|default('Sem objetivo') }} | {{ dieta.calorias_diarias|default(0) }} kcal/dia
             </p>
+            {% endif %}
         </div>
         <div>
             <button class="btn btn-outline-primary" onclick="window.print()">
@@ -45,6 +47,13 @@
             </a>
         </div>
     </div>
+    
+    {% if not dieta %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+            Dieta não encontrada ou não disponível.
+        </div>
+    {% else %}
     
     <!-- Abas -->
     <ul class="nav nav-tabs mb-4" id="dietaTabs" role="tablist">
@@ -78,7 +87,7 @@
     <div class="tab-content" id="dietaTabsContent">
         <!-- Aba Plano Semanal -->
         <div class="tab-pane fade show active" id="semana" role="tabpanel">
-            {% if plano_semanal %}
+            {% if plano_semanal and plano_semanal|length > 0 %}
                 <div class="row">
                     {% for dia_nome, dia_info in plano_semanal.items() %}
                     <div class="col-md-6 col-lg-4 mb-4">
@@ -96,62 +105,66 @@
                                 </h5>
                             </div>
                             <div class="card-body">
-                                {% for refeicao_nome, refeicao_info in dia_info.items() %}
-                                    {% if refeicao_nome not in ['total_diario'] %}
-                                    <div class="card refeicao-card mb-3">
-                                        <div class="card-body">
-                                            <h6 class="card-title">
-                                                {% if refeicao_nome == 'cafe_manha' %}☕ Café da Manhã
-                                                {% elif refeicao_nome == 'almoco' %}🍽️ Almoço
-                                                {% elif refeicao_nome == 'lanche' %}🍎 Lanche
-                                                {% elif refeicao_nome == 'janta' %}🍲 Jantar
-                                                {% else %}{{ refeicao_nome|title }}{% endif %}
-                                            </h6>
-                                            
-                                            <p class="card-text">
-                                                <strong>{{ refeicao_info.refeicao }}</strong>
-                                            </p>
-                                            
-                                            {% if refeicao_info.ingredientes %}
-                                            <p class="small text-muted mb-2">
-                                                <strong>Ingredientes:</strong><br>
-                                                {{ refeicao_info.ingredientes|join(', ') }}
-                                            </p>
-                                            {% endif %}
-                                            
-                                            {% if refeicao_info.macros %}
-                                            <div class="mb-2">
-                                                <span class="badge macros-badge bg-info">
-                                                    P: {{ refeicao_info.macros.proteinas }}g
-                                                </span>
-                                                <span class="badge macros-badge bg-success">
-                                                    C: {{ refeicao_info.macros.carboidratos }}g
-                                                </span>
-                                                <span class="badge macros-badge bg-warning">
-                                                    G: {{ refeicao_info.macros.gorduras }}g
-                                                </span>
+                                {% if dia_info %}
+                                    {% for refeicao_nome, refeicao_info in dia_info.items() %}
+                                        {% if refeicao_nome and refeicao_nome not in ['total_diario'] and refeicao_info %}
+                                        <div class="card refeicao-card mb-3">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    {% if refeicao_nome == 'cafe_manha' %}☕ Café da Manhã
+                                                    {% elif refeicao_nome == 'almoco' %}🍽️ Almoço
+                                                    {% elif refeicao_nome == 'lanche' %}🍎 Lanche
+                                                    {% elif refeicao_nome == 'janta' %}🍲 Jantar
+                                                    {% else %}{{ refeicao_nome|title }}{% endif %}
+                                                </h6>
+                                                
+                                                <p class="card-text">
+                                                    <strong>{{ refeicao_info.refeicao|default('Refeição não especificada') }}</strong>
+                                                </p>
+                                                
+                                                {% if refeicao_info.ingredientes and refeicao_info.ingredientes|length > 0 %}
+                                                <p class="small text-muted mb-2">
+                                                    <strong>Ingredientes:</strong><br>
+                                                    {{ refeicao_info.ingredientes|join(', ') }}
+                                                </p>
+                                                {% endif %}
+                                                
+                                                {% if refeicao_info.macros %}
+                                                <div class="mb-2">
+                                                    <span class="badge macros-badge bg-info">
+                                                        P: {{ refeicao_info.macros.proteinas|default(0) }}g
+                                                    </span>
+                                                    <span class="badge macros-badge bg-success">
+                                                        C: {{ refeicao_info.macros.carboidratos|default(0) }}g
+                                                    </span>
+                                                    <span class="badge macros-badge bg-warning">
+                                                        G: {{ refeicao_info.macros.gorduras|default(0) }}g
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <p class="mb-0 small">
+                                                    <strong>{{ refeicao_info.calorias|default(0) }} kcal</strong>
+                                                </p>
                                             </div>
-                                            {% endif %}
-                                            
-                                            <p class="mb-0 small">
-                                                <strong>{{ refeicao_info.calorias }} kcal</strong>
-                                            </p>
                                         </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if dia_info.total_diario %}
+                                    <div class="alert alert-info mt-3">
+                                        <strong>Total diário:</strong> 
+                                        {{ dia_info.total_diario.calorias|default(0) }} kcal
+                                        <br>
+                                        <small>
+                                            P: {{ dia_info.total_diario.proteinas|default(0) }}g | 
+                                            C: {{ dia_info.total_diario.carboidratos|default(0) }}g | 
+                                            G: {{ dia_info.total_diario.gorduras|default(0) }}g
+                                        </small>
                                     </div>
                                     {% endif %}
-                                {% endfor %}
-                                
-                                {% if dia_info.total_diario %}
-                                <div class="alert alert-info mt-3">
-                                    <strong>Total diário:</strong> 
-                                    {{ dia_info.total_diario.calorias }} kcal
-                                    <br>
-                                    <small>
-                                        P: {{ dia_info.total_diario.proteinas }}g | 
-                                        C: {{ dia_info.total_diario.carboidratos }}g | 
-                                        G: {{ dia_info.total_diario.gorduras }}g
-                                    </small>
-                                </div>
+                                {% else %}
+                                    <p class="text-muted">Sem informações para este dia.</p>
                                 {% endif %}
                             </div>
                         </div>
@@ -168,33 +181,37 @@
         
         <!-- Aba Lista de Compras -->
         <div class="tab-pane fade" id="compras" role="tabpanel">
-            {% if lista_compras %}
+            {% if lista_compras and lista_compras|length > 0 %}
                 <div class="row">
                     {% for categoria in lista_compras %}
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h6 class="mb-0">{{ categoria.categoria }}</h6>
+                                <h6 class="mb-0">{{ categoria.categoria|default('Outros') }}</h6>
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
-                                    {% for item in categoria.itens %}
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <input class="form-check-input me-2" type="checkbox">
-                                            {{ item.nome }}
-                                            <small class="text-muted d-block">
-                                                {{ item.quantidade }}
-                                            </small>
-                                        </div>
-                                        <span class="badge 
-                                            {% if item.prioridade == 'alta' %}bg-danger
-                                            {% elif item.prioridade == 'media' %}bg-warning
-                                            {% else %}bg-secondary{% endif %}">
-                                            {{ item.prioridade }}
-                                        </span>
-                                    </li>
-                                    {% endfor %}
+                                    {% if categoria.itens and categoria.itens|length > 0 %}
+                                        {% for item in categoria.itens %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <input class="form-check-input me-2" type="checkbox">
+                                                {{ item.nome|default('Item sem nome') }}
+                                                <small class="text-muted d-block">
+                                                    {{ item.quantidade|default('Quantidade não especificada') }}
+                                                </small>
+                                            </div>
+                                            <span class="badge 
+                                                {% if item.prioridade == 'alta' %}bg-danger
+                                                {% elif item.prioridade == 'media' %}bg-warning
+                                                {% else %}bg-secondary{% endif %}">
+                                                {{ item.prioridade|default('baixa') }}
+                                            </span>
+                                        </li>
+                                        {% endfor %}
+                                    {% else %}
+                                        <li class="list-group-item text-muted">Nenhum item nesta categoria</li>
+                                    {% endif %}
                                 </ul>
                             </div>
                         </div>
@@ -223,26 +240,30 @@
         
         <!-- Aba Receitas -->
         <div class="tab-pane fade" id="receitas" role="tabpanel">
-            {% if receitas %}
+            {% if receitas and receitas|length > 0 %}
                 <div class="row">
                     {% for receita in receitas %}
                     <div class="col-md-6 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="mb-0">{{ receita.nome }}</h5>
+                                <h5 class="mb-0">{{ receita.nome|default('Receita sem nome') }}</h5>
                             </div>
                             <div class="card-body">
                                 <h6>Ingredientes:</h6>
+                                {% if receita.ingredientes and receita.ingredientes|length > 0 %}
                                 <ul class="mb-3">
                                     {% for ingrediente in receita.ingredientes %}
-                                    <li>{{ ingrediente }}</li>
+                                    <li>{{ ingrediente|default('Ingrediente não especificado') }}</li>
                                     {% endfor %}
                                 </ul>
+                                {% else %}
+                                <p class="text-muted">Ingredientes não disponíveis.</p>
+                                {% endif %}
                                 
                                 <h6>Modo de Preparo:</h6>
-                                <p>{{ receita.preparo }}</p>
+                                <p>{{ receita.preparo|default('Modo de preparo não disponível.') }}</p>
                                 
-                                {% if receita.nutricional %}
+                                {% if receita.nutricional and receita.nutricional|length > 0 %}
                                 <div class="alert alert-info">
                                     <strong>Informação Nutricional:</strong><br>
                                     {% for key, value in receita.nutricional.items() %}
@@ -275,24 +296,24 @@
                             <table class="table">
                                 <tr>
                                     <th width="30%">Nome:</th>
-                                    <td>{{ dieta.nome }}</td>
+                                    <td>{{ dieta.nome|default('Não informado') }}</td>
                                 </tr>
                                 <tr>
                                     <th>Tipo:</th>
-                                    <td>{{ dieta.objetivo }}</td>
+                                    <td>{{ dieta.objetivo|default('Não informado') }}</td>
                                 </tr>
                                 <tr>
                                     <th>Calorias Diárias:</th>
-                                    <td>{{ dieta.calorias_diarias }} kcal</td>
+                                    <td>{{ dieta.calorias_diarias|default(0) }} kcal</td>
                                 </tr>
                                 <tr>
                                     <th>Data de Início:</th>
-                                    <td>{{ dieta.data_inicio.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ dieta.data_inicio.strftime('%d/%m/%Y') if dieta.data_inicio else 'Não informada' }}</td>
                                 </tr>
                                 {% if dieta.data_fim %}
                                 <tr>
                                     <th>Data de Término:</th>
-                                    <td>{{ dieta.data_fim.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ dieta.data_fim.strftime('%d/%m/%Y') if dieta.data_fim else 'Não informada' }}</td>
                                 </tr>
                                 {% endif %}
                                 <tr>
@@ -370,6 +391,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -377,20 +399,30 @@
 <script>
     // Controle da lista de compras
     function marcarTodos() {
-        document.querySelectorAll('#compras input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = true;
-        });
+        const checkboxes = document.querySelectorAll('#compras input[type="checkbox"]');
+        if (checkboxes.length > 0) {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            atualizarContagem();
+        }
     }
     
     function desmarcarTodos() {
-        document.querySelectorAll('#compras input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
+        const checkboxes = document.querySelectorAll('#compras input[type="checkbox"]');
+        if (checkboxes.length > 0) {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            atualizarContagem();
+        }
     }
     
     // Atualizar contagem de itens marcados
     function atualizarContagem() {
         const checkboxes = document.querySelectorAll('#compras input[type="checkbox"]');
+        if (checkboxes.length === 0) return;
+        
         const marcados = Array.from(checkboxes).filter(cb => cb.checked).length;
         const total = checkboxes.length;
         
@@ -399,25 +431,30 @@
             contador = document.createElement('div');
             contador.id = 'contadorCompras';
             contador.className = 'alert alert-secondary mt-3';
-            document.querySelector('#compras').appendChild(contador);
+            const comprasTab = document.querySelector('#compras');
+            if (comprasTab) {
+                comprasTab.appendChild(contador);
+            }
         }
         
         contador.innerHTML = `
             <i class="bi bi-cart-check"></i>
             ${marcados}/${total} itens marcados
-            <span class="float-end">${((marcados/total)*100).toFixed(0)}%</span>
+            <span class="float-end">${total > 0 ? ((marcados/total)*100).toFixed(0) : 0}%</span>
         `;
     }
     
     // Adicionar eventos aos checkboxes
     document.addEventListener('DOMContentLoaded', function() {
         const checkboxes = document.querySelectorAll('#compras input[type="checkbox"]');
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', atualizarContagem);
-        });
-        
-        // Inicializar contagem
-        setTimeout(atualizarContagem, 100);
+        if (checkboxes.length > 0) {
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', atualizarContagem);
+            });
+            
+            // Inicializar contagem
+            setTimeout(atualizarContagem, 100);
+        }
     });
 </script>
 {% endblock %}

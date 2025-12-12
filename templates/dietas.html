@@ -31,25 +31,25 @@
     <div class="mb-5">
         <h3 class="mb-3">
             <i class="bi bi-lightning-charge text-success"></i> Dietas Ativas
-            <span class="badge bg-success">{{ dietas_ativas|length }}</span>
+            <span class="badge bg-success">{{ dietas_ativas|length if dietas_ativas else 0 }}</span>
         </h3>
         
-        {% if dietas_ativas %}
+        {% if dietas_ativas and dietas_ativas|length > 0 %}
         <div class="row">
             {% for dieta in dietas_ativas %}
             <div class="col-md-4 mb-4">
                 <div class="card dieta-card h-100 border-success">
                     <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">{{ dieta.nome }}</h5>
+                        <h5 class="mb-0">{{ dieta.nome|default('Dieta sem nome') }}</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <span class="badge bg-primary">{{ dieta.objetivo }}</span>
-                            <span class="badge bg-info">{{ dieta.calorias_diarias }} kcal/dia</span>
+                            <span class="badge bg-primary">{{ dieta.objetivo|default('Geral') }}</span>
+                            <span class="badge bg-info">{{ dieta.calorias_diarias|default(0) }} kcal/dia</span>
                         </div>
                         
                         <p class="card-text">
-                            <strong>Criada em:</strong> {{ dieta.data_inicio.strftime('%d/%m/%Y') }}
+                            <strong>Criada em:</strong> {{ dieta.data_inicio.strftime('%d/%m/%Y') if dieta.data_inicio else 'Data não informada' }}
                         </p>
                         
                         {% if dieta.data_fim %}
@@ -59,7 +59,7 @@
                         {% endif %}
                     </div>
                     <div class="card-footer">
-                        <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta.id) }}" 
+                        <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta.id) if dieta.id else '#' }}" 
                            class="btn btn-primary btn-sm">
                             <i class="bi bi-eye"></i> Ver Detalhes
                         </a>
@@ -83,10 +83,10 @@
     <div>
         <h3 class="mb-3">
             <i class="bi bi-archive text-secondary"></i> Dietas Anteriores
-            <span class="badge bg-secondary">{{ dietas_anteriores|length }}</span>
+            <span class="badge bg-secondary">{{ dietas_anteriores|length if dietas_anteriores else 0 }}</span>
         </h3>
         
-        {% if dietas_anteriores %}
+        {% if dietas_anteriores and dietas_anteriores|length > 0 %}
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead class="table-light">
@@ -101,19 +101,19 @@
                 <tbody>
                     {% for dieta in dietas_anteriores %}
                     <tr>
-                        <td>{{ dieta.nome }}</td>
+                        <td>{{ dieta.nome|default('Dieta sem nome') }}</td>
                         <td>
-                            <span class="badge bg-secondary">{{ dieta.objetivo }}</span>
+                            <span class="badge bg-secondary">{{ dieta.objetivo|default('Geral') }}</span>
                         </td>
-                        <td>{{ dieta.calorias_diarias }} kcal</td>
+                        <td>{{ dieta.calorias_diarias|default(0) }} kcal</td>
                         <td>
-                            {{ dieta.data_inicio.strftime('%d/%m/%Y') }} 
+                            {{ dieta.data_inicio.strftime('%d/%m/%Y') if dieta.data_inicio else 'N/A' }} 
                             {% if dieta.data_fim %}
                             - {{ dieta.data_fim.strftime('%d/%m/%Y') }}
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta.id) }}" 
+                            <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta.id) if dieta.id else '#' }}" 
                                class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-eye"></i>
                             </a>
@@ -151,6 +151,13 @@
                         {{ form.nome.label(class="form-label") }}
                         {{ form.nome(class="form-control", 
                            placeholder="Ex: Dieta de Definição Verão 2024") }}
+                        {% if form.nome.errors %}
+                            <div class="text-danger">
+                                {% for error in form.nome.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     
                     <div class="row">
@@ -183,7 +190,7 @@
                             <span class="input-group-text">kcal</span>
                         </div>
                         <small class="text-muted">
-                            Sua necessidade calórica estimada: <strong>{{ current_user.tmb|int }} kcal</strong>
+                            Sua necessidade calórica estimada: <strong>{{ current_user.tmb|default(2000)|int }} kcal</strong>
                         </small>
                     </div>
                     

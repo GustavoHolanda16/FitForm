@@ -17,13 +17,13 @@
                         <i class="bi bi-person-circle display-1 text-primary"></i>
                     </div>
                     
-                    <h4>{{ usuario.nome }}</h4>
-                    <p class="text-muted">{{ usuario.email }}</p>
+                    <h4>{{ usuario.nome|default('Usuário') }}</h4>
+                    <p class="text-muted">{{ usuario.email|default('Email não informado') }}</p>
                     
                     <div class="mt-4">
-                        <p><strong>Nível:</strong> {{ usuario.nivel_atividade or 'Não informado' }}</p>
-                        <p><strong>Gênero:</strong> {{ usuario.genero or 'Não informado' }}</p>
-                        <p><strong>Idade:</strong> {{ usuario.idade or 'Não informada' }} anos</p>
+                        <p><strong>Nível:</strong> {{ usuario.nivel_atividade|default('Não informado') }}</p>
+                        <p><strong>Gênero:</strong> {{ usuario.genero|default('Não informado') }}</p>
+                        <p><strong>Idade:</strong> {{ usuario.idade|default('Não informada') if usuario.idade else 'Não informada' }} anos</p>
                     </div>
                     
                     <a href="#" class="btn btn-outline-primary btn-sm">
@@ -40,21 +40,22 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <p><strong>IMC:</strong> {{ "%.1f"|format(usuario.imc) }}</p>
+                    <p><strong>IMC:</strong> {{ "%.1f"|format(usuario.imc) if usuario and usuario.imc else '0.0' }}</p>
                     <div class="progress mb-2">
-                        {% set imc_percent = ((usuario.imc - 15) / (40 - 15)) * 100 %}
+                        {% set imc_value = usuario.imc if usuario and usuario.imc else 0 %}
+                        {% set imc_percent = ((imc_value - 15) / (40 - 15)) * 100 if imc_value else 0 %}
                         <div class="progress-bar 
-                            {% if usuario.imc < 18.5 %}bg-warning
-                            {% elif usuario.imc <= 24.9 %}bg-success
-                            {% elif usuario.imc <= 29.9 %}bg-warning
+                            {% if imc_value < 18.5 %}bg-warning
+                            {% elif imc_value <= 24.9 %}bg-success
+                            {% elif imc_value <= 29.9 %}bg-warning
                             {% else %}bg-danger{% endif %}"
                             style="width: {{ imc_percent|clamp(0, 100) }}%">
                         </div>
                     </div>
                     
-                    <p><strong>TMB:</strong> {{ "%.0f"|format(usuario.tmb) }} kcal</p>
-                    <p><strong>Peso:</strong> {{ usuario.peso }} kg</p>
-                    <p><strong>Altura:</strong> {{ usuario.altura }} m</p>
+                    <p><strong>TMB:</strong> {{ "%.0f"|format(usuario.tmb) if usuario and usuario.tmb else '0' }} kcal</p>
+                    <p><strong>Peso:</strong> {{ usuario.peso|default('N/A') }} kg</p>
+                    <p><strong>Altura:</strong> {{ usuario.altura|default('N/A') }} m</p>
                 </div>
             </div>
         </div>
@@ -71,22 +72,24 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if usuario.objetivos %}
+                    {% if usuario.objetivos and usuario.objetivos|length > 0 %}
                         <div class="list-group">
-                            {% for objetivo in usuario.objetivos if objetivo.status == 'ativo' %}
-                            <a href="{{ url_for('main.detalhe_objetivo', objetivo_id=objetivo.id) }}" 
-                               class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ objetivo.titulo }}</h6>
-                                    <small>{{ objetivo.progresso }}%</small>
-                                </div>
-                                <p class="mb-1">{{ objetivo.meta }}</p>
-                                <div class="progress" style="height: 5px;">
-                                    <div class="progress-bar bg-success" 
-                                         style="width: {{ objetivo.progresso }}%">
+                            {% for objetivo in usuario.objetivos %}
+                                {% if objetivo.status == 'ativo' %}
+                                <a href="{{ url_for('main.detalhe_objetivo', objetivo_id=objetivo.id) if objetivo.id else '#' }}" 
+                                   class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ objetivo.titulo|default('Objetivo sem título') }}</h6>
+                                        <small>{{ objetivo.progresso|default(0) }}%</small>
                                     </div>
-                                </div>
-                            </a>
+                                    <p class="mb-1">{{ objetivo.meta|default('Sem meta definida') }}</p>
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: {{ objetivo.progresso|default(0) }}%">
+                                        </div>
+                                    </div>
+                                </a>
+                                {% endif %}
                             {% endfor %}
                         </div>
                     {% else %}
@@ -109,22 +112,24 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if usuario.treinos %}
+                    {% if usuario.treinos and usuario.treinos|length > 0 %}
                         <div class="row">
-                            {% for treino in usuario.treinos if treino.ativo %}
-                            <div class="col-md-6 mb-3">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h6>{{ treino.nome or 'Treino ' + treino.id|string }}</h6>
-                                        <p class="small text-muted">
-                                            <i class="bi bi-calendar"></i> 
-                                            {{ treino.data_criacao.strftime('%d/%m/%Y') }}
-                                        </p>
-                                        <span class="badge bg-primary">{{ treino.nivel }}</span>
-                                        <span class="badge bg-info">{{ treino.dias_semana }} dias/semana</span>
+                            {% for treino in usuario.treinos %}
+                                {% if treino.ativo %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6>{{ treino.nome if treino.nome else 'Treino ' ~ treino.id|string if treino.id else 'Treino' }}</h6>
+                                            <p class="small text-muted">
+                                                <i class="bi bi-calendar"></i> 
+                                                {{ treino.data_criacao.strftime('%d/%m/%Y') if treino.data_criacao else 'Data não informada' }}
+                                            </p>
+                                            <span class="badge bg-primary">{{ treino.nivel|default('Iniciante') }}</span>
+                                            <span class="badge bg-info">{{ treino.dias_semana|default(3) }} dias/semana</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                                {% endif %}
                             {% endfor %}
                         </div>
                     {% else %}
@@ -147,18 +152,18 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if usuario.dietas %}
+                    {% if usuario.dietas and usuario.dietas|length > 0 %}
                         {% set dieta_ativa = usuario.dietas|selectattr('ativa')|first %}
                         {% if dieta_ativa %}
                             <div class="alert alert-info">
-                                <h6>{{ dieta_ativa.nome }}</h6>
+                                <h6>{{ dieta_ativa.nome|default('Dieta sem nome') }}</h6>
                                 <p class="mb-1">
-                                    <strong>Calorias diárias:</strong> {{ dieta_ativa.calorias_diarias }} kcal
+                                    <strong>Calorias diárias:</strong> {{ dieta_ativa.calorias_diarias|default(0) }} kcal
                                 </p>
                                 <p class="mb-0">
-                                    <strong>Objetivo:</strong> {{ dieta_ativa.objetivo }}
+                                    <strong>Objetivo:</strong> {{ dieta_ativa.objetivo|default('Não informado') }}
                                 </p>
-                                <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta_ativa.id) }}" 
+                                <a href="{{ url_for('main.detalhe_dieta', dieta_id=dieta_ativa.id) if dieta_ativa.id else '#' }}" 
                                    class="btn btn-sm btn-primary mt-2">
                                     Ver detalhes
                                 </a>

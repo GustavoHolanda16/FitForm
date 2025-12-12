@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ objetivo.titulo }} - FitForm{% endblock %}
+{% block title %}{{ objetivo.titulo if objetivo else 'Objetivo' }} - FitForm{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -47,20 +47,30 @@
 
 {% block content %}
 <div class="container">
+    {% if not objetivo %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+            Objetivo não encontrado ou não disponível.
+        </div>
+        <a href="{{ url_for('main.objetivos') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar para Objetivos
+        </a>
+    {% else %}
+    
     <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1>
-                <i class="bi bi-bullseye text-primary"></i> {{ objetivo.titulo }}
+                <i class="bi bi-bullseye text-primary"></i> {{ objetivo.titulo|default('Objetivo sem título') }}
             </h1>
             <div class="d-flex align-items-center gap-2">
                 <span class="badge 
                     {% if objetivo.status == 'ativo' %}bg-success
                     {% elif objetivo.status == 'concluido' %}bg-secondary
                     {% else %}bg-warning{% endif %}">
-                    {{ objetivo.status|title }}
+                    {{ objetivo.status|default('ativo')|title }}
                 </span>
-                <span class="badge bg-primary">{{ objetivo.tipo|replace('_', ' ')|title }}</span>
+                <span class="badge bg-primary">{{ objetivo.tipo|default('outro')|replace('_', ' ')|title }}</span>
                 {% if objetivo.data_fim %}
                 <span class="text-muted">
                     <i class="bi bi-calendar"></i> 
@@ -91,10 +101,10 @@
                                     <circle class="progress-circle-bg" cx="75" cy="75" r="65"/>
                                     <circle class="progress-circle-fg" cx="75" cy="75" r="65" 
                                             stroke-dasharray="408.4" 
-                                            stroke-dashoffset="{{ 408.4 * (1 - objetivo.progresso/100) }}"/>
+                                            stroke-dashoffset="{{ 408.4 * (1 - (objetivo.progresso|default(0))/100) }}"/>
                                 </svg>
                                 <div class="progress-circle-text">
-                                    {{ objetivo.progresso }}%
+                                    {{ objetivo.progresso|default(0) }}%
                                 </div>
                             </div>
                             <h5>Progresso Geral</h5>
@@ -102,7 +112,7 @@
                         
                         <div class="col-md-9">
                             <div class="mb-3">
-                                <strong>Meta:</strong> {{ objetivo.meta }}
+                                <strong>Meta:</strong> {{ objetivo.meta|default('Sem meta definida') }}
                             </div>
                             
                             {% if objetivo.descricao %}
@@ -116,7 +126,7 @@
                                 <div class="col-6">
                                     <div class="kpi-card">
                                         <small class="text-muted">Início</small>
-                                        <h5 class="mb-0">{{ objetivo.data_inicio.strftime('%d/%m/%Y') }}</h5>
+                                        <h5 class="mb-0">{{ objetivo.data_inicio.strftime('%d/%m/%Y') if objetivo.data_inicio else '--/--/----' }}</h5>
                                     </div>
                                 </div>
                                 <div class="col-6">
@@ -138,7 +148,7 @@
             </div>
             
             <!-- Metas Semanais -->
-            {% if detalhes and detalhes.metas_semanais %}
+            {% if detalhes and detalhes.metas_semanais and detalhes.metas_semanais|length > 0 %}
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
@@ -152,24 +162,24 @@
                             <div class="card">
                                 <div class="card-header">
                                     <h6 class="mb-0">
-                                        Semana {{ meta.semana }}: {{ meta.descricao }}
+                                        Semana {{ meta.semana|default(loop.index) }}: {{ meta.descricao|default('Sem descrição') }}
                                     </h6>
                                 </div>
                                 <div class="card-body">
-                                    {% if meta.indicadores %}
+                                    {% if meta.indicadores and meta.indicadores|length > 0 %}
                                     <p class="mb-2">
                                         <strong>Indicadores:</strong><br>
                                         {% for indicador in meta.indicadores %}
-                                        <span class="badge bg-info me-1">{{ indicador }}</span>
+                                        <span class="badge bg-info me-1">{{ indicador|default('Indicador') }}</span>
                                         {% endfor %}
                                     </p>
                                     {% endif %}
                                     
-                                    {% if meta.treinos_recomendados %}
+                                    {% if meta.treinos_recomendados and meta.treinos_recomendados|length > 0 %}
                                     <p class="mb-0">
                                         <strong>Treinos recomendados:</strong><br>
                                         {% for treino in meta.treinos_recomendados %}
-                                        <span class="badge bg-success me-1">{{ treino }}</span>
+                                        <span class="badge bg-success me-1">{{ treino|default('Treino') }}</span>
                                         {% endfor %}
                                     </p>
                                     {% endif %}
@@ -177,8 +187,8 @@
                                 <div class="card-footer">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" 
-                                               id="semana{{ meta.semana }}">
-                                        <label class="form-check-label" for="semana{{ meta.semana }}">
+                                               id="semana{{ meta.semana|default(loop.index) }}">
+                                        <label class="form-check-label" for="semana{{ meta.semana|default(loop.index) }}">
                                             Marcar como concluída
                                         </label>
                                     </div>
@@ -192,7 +202,7 @@
             {% endif %}
             
             <!-- Checkpoints -->
-            {% if detalhes and detalhes.checkpoints %}
+            {% if detalhes and detalhes.checkpoints and detalhes.checkpoints|length > 0 %}
             <div class="card mb-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">
@@ -205,10 +215,10 @@
                         <div class="col-md-6 mb-3">
                             <div class="card">
                                 <div class="card-body">
-                                    <h6>Semana {{ checkpoint.semana }}</h6>
-                                    <p class="mb-2">{{ checkpoint.descricao }}</p>
+                                    <h6>Semana {{ checkpoint.semana|default(loop.index) }}</h6>
+                                    <p class="mb-2">{{ checkpoint.descricao|default('Sem descrição') }}</p>
                                     <p class="mb-0">
-                                        <strong>Meta esperada:</strong> {{ checkpoint.metrica_esperada }}
+                                        <strong>Meta esperada:</strong> {{ checkpoint.metrica_esperada|default('Não definida') }}
                                     </p>
                                 </div>
                             </div>
@@ -230,14 +240,16 @@
                 </div>
                 <div class="card-body">
                     {% if detalhes and detalhes.kpis %}
+                        {% if detalhes.kpis.principal %}
                         <div class="mb-3">
                             <strong>Principal:</strong>
                             <span class="badge bg-primary d-block mt-1">
                                 {{ detalhes.kpis.principal|replace('_', ' ')|title }}
                             </span>
                         </div>
+                        {% endif %}
                         
-                        {% if detalhes.kpis.secundarios %}
+                        {% if detalhes.kpis.secundarios and detalhes.kpis.secundarios|length > 0 %}
                         <div>
                             <strong>Secundários:</strong>
                             {% for secundario in detalhes.kpis.secundarios %}
@@ -271,7 +283,7 @@
             {% endif %}
             
             <!-- Dicas Psicológicas -->
-            {% if detalhes and detalhes.dicas_psicologicas %}
+            {% if detalhes and detalhes.dicas_psicologicas and detalhes.dicas_psicologicas|length > 0 %}
             <div class="card mb-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">
@@ -281,7 +293,7 @@
                 <div class="card-body">
                     <ul class="mb-0">
                         {% for dica in detalhes.dicas_psicologicas %}
-                        <li>{{ dica }}</li>
+                        <li>{{ dica|default('Dica não disponível') }}</li>
                         {% endfor %}
                     </ul>
                 </div>
@@ -289,7 +301,7 @@
             {% endif %}
             
             <!-- Gráfico de Medidas -->
-            {% if medidas %}
+            {% if medidas and medidas|length > 0 %}
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
@@ -324,6 +336,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <!-- Modal Atualizar Progresso -->
@@ -341,9 +354,9 @@
                     <div class="mb-3">
                         <label class="form-label">Novo Progresso (%)</label>
                         <input type="range" class="form-range" min="0" max="100" 
-                               value="{{ objetivo.progresso }}" id="progressoRange">
+                               value="{{ objetivo.progresso|default(0) }}" id="progressoRange">
                         <div class="text-center">
-                            <span id="rangeValue" class="h4">{{ objetivo.progresso }}</span>%
+                            <span id="rangeValue" class="h4">{{ objetivo.progresso|default(0) }}</span>%
                         </div>
                     </div>
                     
@@ -355,7 +368,7 @@
                     
                     <div class="mb-3">
                         <label class="form-label">Data da Atualização</label>
-                        <input type="date" class="form-control" value="{{ hoje }}">
+                        <input type="date" class="form-control" value="{{ hoje if hoje else '' }}">
                     </div>
                 </form>
             </div>
@@ -415,67 +428,70 @@
     }
     
     // Gráfico de medidas
-    {% if medidas %}
-    const ctx = document.getElementById('medidasChart').getContext('2d');
-    
-    const datas = [
-        {% for medida in medidas %}
-            "{{ medida.data.strftime('%d/%m') }}",
-        {% endfor %}
-    ];
-    
-    const pesos = [
-        {% for medida in medidas %}
-            {{ medida.peso }},
-        {% endfor %}
-    ];
-    
-    const cinturas = [
-        {% for medida in medidas %}
-            {{ medida.cintura or 'null' }},
-        {% endfor %}
-    ];
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: datas,
-            datasets: [
-                {
-                    label: 'Peso (kg)',
-                    data: pesos,
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Cintura (cm)',
-                    data: cinturas,
-                    borderColor: '#ff6b6b',
-                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                }
+    {% if medidas and medidas|length > 0 %}
+    const ctx = document.getElementById('medidasChart');
+    if (ctx) {
+        const ctx2d = ctx.getContext('2d');
+        
+        const datas = [
+            {% for medida in medidas %}
+                "{{ medida.data.strftime('%d/%m') if medida.data else 'N/A' }}",
+            {% endfor %}
+        ];
+        
+        const pesos = [
+            {% for medida in medidas %}
+                {{ medida.peso|default('null') }},
+            {% endfor %}
+        ];
+        
+        const cinturas = [
+            {% for medida in medidas %}
+                {{ medida.cintura|default('null') }},
+            {% endfor %}
+        ];
+        
+        new Chart(ctx2d, {
+            type: 'line',
+            data: {
+                labels: datas,
+                datasets: [
+                    {
+                        label: 'Peso (kg)',
+                        data: pesos,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Cintura (cm)',
+                        data: cinturas,
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
             },
-            scales: {
-                y: {
-                    beginAtZero: false
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
                 }
             }
-        }
-    });
+        });
+    }
     {% endif %}
 </script>
 {% endblock %}

@@ -66,8 +66,10 @@ class ObjetivoForm(FlaskForm):
 class DietaForm(FlaskForm):
     nome = StringField('Nome da Dieta', validators=[DataRequired()])
     
-    objetivo_associado = SelectField('Associar a Objetivo', coerce=int, 
-                                     validators=[Optional()])
+    objetivo_associado = SelectField('Objetivo Associado', 
+                                    choices=[],  
+                                    coerce=int,
+                                    validators=[Optional()])
     
     tipo_dieta = SelectField('Tipo de Dieta', choices=[
         ('equilibrada', '🥗 Dieta Equilibrada'),

@@ -66,13 +66,13 @@
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="stat-card 
-                {% if variacao_peso < 0 %}positive
-                {% elif variacao_peso > 0 %}negative
+                {% if variacao_peso and variacao_peso < 0 %}positive
+                {% elif variacao_peso and variacao_peso > 0 %}negative
                 {% else %}neutral{% endif %}">
                 <h5>Variação de Peso</h5>
                 <h2>
-                    {% if variacao_peso > 0 %}+{% endif %}
-                    {{ "%.1f"|format(variacao_peso) }} kg
+                    {% if variacao_peso and variacao_peso > 0 %}+{% endif %}
+                    {{ "%.1f"|format(variacao_peso) if variacao_peso else "0.0" }} kg
                 </h2>
                 <small>Desde o início</small>
             </div>
@@ -80,13 +80,13 @@
         
         <div class="col-md-3">
             <div class="stat-card 
-                {% if variacao_imc < 0 %}positive
-                {% elif variacao_imc > 0 %}negative
+                {% if variacao_imc and variacao_imc < 0 %}positive
+                {% elif variacao_imc and variacao_imc > 0 %}negative
                 {% else %}neutral{% endif %}">
                 <h5>Variação do IMC</h5>
                 <h2>
-                    {% if variacao_imc > 0 %}+{% endif %}
-                    {{ "%.1f"|format(variacao_imc) }}
+                    {% if variacao_imc and variacao_imc > 0 %}+{% endif %}
+                    {{ "%.1f"|format(variacao_imc) if variacao_imc else "0.0" }}
                 </h2>
                 <small>Desde o início</small>
             </div>
@@ -95,7 +95,7 @@
         <div class="col-md-3">
             <div class="stat-card neutral">
                 <h5>Total de Medidas</h5>
-                <h2>{{ medidas|length }}</h2>
+                <h2>{{ medidas|length if medidas else 0 }}</h2>
                 <small>Registros</small>
             </div>
         </div>
@@ -103,7 +103,7 @@
         <div class="col-md-3">
             <div class="stat-card neutral">
                 <h5>Objetivos Ativos</h5>
-                <h2>{{ objetivos|length }}</h2>
+                <h2>{{ objetivos|length if objetivos else 0 }}</h2>
                 <small>Em andamento</small>
             </div>
         </div>
@@ -133,17 +133,18 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if medidas %}
+                    {% if medidas and medidas|length > 0 %}
                     <div class="timeline">
-                        {% for medida in medidas[-10:]|reverse %}
+                        {% set medidas_recentes = medidas|slice(-10)|reverse %}
+                        {% for medida in medidas_recentes %}
                         <div class="timeline-item">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div>
-                                            <h6>{{ medida.data.strftime('%d/%m/%Y') }}</h6>
+                                            <h6>{{ medida.data.strftime('%d/%m/%Y') if medida.data else 'Data não informada' }}</h6>
                                             <p class="mb-1">
-                                                <strong>Peso:</strong> {{ medida.peso }} kg
+                                                <strong>Peso:</strong> {{ medida.peso|default('N/A') }} kg
                                                 {% if medida.altura %}
                                                 | <strong>Altura:</strong> {{ medida.altura }} m
                                                 {% endif %}
@@ -160,9 +161,11 @@
                                         </div>
                                         
                                         <div class="text-end">
+                                            {% if medida.peso and medida.altura and medida.altura > 0 %}
                                             <span class="badge bg-primary">
                                                 IMC: {{ "%.1f"|format(medida.peso / (medida.altura ** 2)) }}
                                             </span>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
@@ -189,24 +192,26 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    {% if objetivos %}
-                        {% for objetivo in objetivos if objetivo.status == 'ativo' %}
-                        <div class="mb-3">
-                            <h6>{{ objetivo.titulo }}</h6>
-                            <div class="progress mb-2" style="height: 10px;">
-                                <div class="progress-bar bg-success" 
-                                     style="width: {{ objetivo.progresso }}%">
+                    {% if objetivos and objetivos|length > 0 %}
+                        {% for objetivo in objetivos %}
+                            {% if objetivo.status == 'ativo' %}
+                            <div class="mb-3">
+                                <h6>{{ objetivo.titulo|default('Objetivo sem título') }}</h6>
+                                <div class="progress mb-2" style="height: 10px;">
+                                    <div class="progress-bar bg-success" 
+                                         style="width: {{ objetivo.progresso|default(0) }}%">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between small">
+                                    <span>{{ objetivo.progresso|default(0) }}% concluído</span>
+                                    <span>
+                                        {% if objetivo.data_fim %}
+                                        {{ objetivo.data_fim.strftime('%d/%m') }}
+                                        {% endif %}
+                                    </span>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-between small">
-                                <span>{{ objetivo.progresso }}% concluído</span>
-                                <span>
-                                    {% if objetivo.data_fim %}
-                                    {{ objetivo.data_fim.strftime('%d/%m') }}
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
+                            {% endif %}
                         {% endfor %}
                     {% else %}
                         <p class="text-muted">
@@ -257,94 +262,103 @@
 {% block extra_js %}
 <script>
     // Gráfico de Peso
-    const ctx = document.getElementById('pesoChart').getContext('2d');
-    
-    // Preparar dados
-    const datas = [
-        {% for medida in medidas %}
-            "{{ medida.data.strftime('%d/%m') }}",
-        {% endfor %}
-    ];
-    
-    const pesos = [
-        {% for medida in medidas %}
-            {{ medida.peso }},
-        {% endfor %}
-    ];
-    
-    // Calcular linha de tendência
-    function calcularTendencia(pesos) {
-        const n = pesos.length;
-        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    const ctx = document.getElementById('pesoChart');
+    if (ctx) {
+        const ctx2d = ctx.getContext('2d');
         
-        for (let i = 0; i < n; i++) {
-            sumX += i;
-            sumY += pesos[i];
-            sumXY += i * pesos[i];
-            sumX2 += i * i;
+        // Preparar dados
+        const datas = [
+            {% if medidas and medidas|length > 0 %}
+                {% for medida in medidas %}
+                    "{{ medida.data.strftime('%d/%m') if medida.data else 'N/A' }}",
+                {% endfor %}
+            {% endif %}
+        ];
+        
+        const pesos = [
+            {% if medidas and medidas|length > 0 %}
+                {% for medida in medidas %}
+                    {{ medida.peso|default(0) }},
+                {% endfor %}
+            {% endif %}
+        ];
+        
+        // Calcular linha de tendência
+        function calcularTendencia(pesosArray) {
+            if (!pesosArray || pesosArray.length === 0) return [];
+            
+            const n = pesosArray.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            
+            for (let i = 0; i < n; i++) {
+                sumX += i;
+                sumY += pesosArray[i];
+                sumXY += i * pesosArray[i];
+                sumX2 += i * i;
+            }
+            
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            
+            return pesosArray.map((_, i) => slope * i + intercept);
         }
         
-        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-        const intercept = (sumY - slope * sumX) / n;
+        const tendencia = calcularTendencia(pesos);
         
-        return pesos.map((_, i) => slope * i + intercept);
-    }
-    
-    const tendencia = calcularTendencia(pesos);
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: datas,
-            datasets: [
-                {
-                    label: 'Peso (kg)',
-                    data: pesos,
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Tendência',
-                    data: tendencia,
-                    borderColor: '#ff6b6b',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
-                }
+        new Chart(ctx2d, {
+            type: 'line',
+            data: {
+                labels: datas.length > 0 ? datas : ['Nenhum dado'],
+                datasets: [
+                    {
+                        label: 'Peso (kg)',
+                        data: pesos.length > 0 ? pesos : [0],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Tendência',
+                        data: tendencia.length > 0 ? tendencia : [0],
+                        borderColor: '#ff6b6b',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0
+                    }
+                ]
             },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    title: {
-                        display: true,
-                        text: 'Peso (kg)'
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
                     }
                 },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Data'
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Peso (kg)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Data'
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
 </script>
 {% endblock %}
