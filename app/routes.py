@@ -32,7 +32,8 @@ def log_acao(tipo, mensagem):
 @main.before_request
 def proteger_tudo():
     """Protege todas as rotas exceto as públicas"""
-    rotas_livres = [
+    # Lista de rotas públicas
+    rotas_publicas = [
         'main.home', 
         'main.login', 
         'main.registro',
@@ -40,19 +41,11 @@ def proteger_tudo():
         'static'  # Para arquivos estáticos
     ]
     
-    if request.endpoint not in rotas_livres and not current_user.is_authenticated:
-        flash('Você precisa fazer login primeiro.', 'warning')
-        return redirect(url_for('main.login'))
-
-@main.before_app_request
-def atualizar_ultimo_login():
-    """Atualiza o último login do usuário"""
-    if current_user.is_authenticated:
-        try:
-            current_user.ultimo_login = datetime.utcnow()
-            db.session.commit()
-        except Exception as e:
-            print(f"Erro ao atualizar último login: {e}")
+    # Verificar se a rota atual não é pública e usuário não está autenticado
+    if request.endpoint and request.endpoint not in rotas_publicas:
+        if not current_user.is_authenticated:
+            flash('Você precisa fazer login primeiro.', 'warning')
+            return redirect(url_for('main.login'))
 
 # ==================== ROTAS PÚBLICAS ====================
 @main.route('/')
@@ -65,6 +58,9 @@ def home():
 @main.route('/registro', methods=['GET', 'POST'])
 def registro():
     """Registro de novo usuário"""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    
     form = RegistroForm()
     
     if form.validate_on_submit():
@@ -80,6 +76,18 @@ def registro():
                 flash('As senhas não coincidem.', 'danger')
                 return render_template('registro.html', form=form)
             
+            # Calcular idade
+            data_nascimento = form.data_nascimento.data
+            hoje = datetime.utcnow()
+            idade = hoje.year - data_nascimento.year
+            if hoje.month < data_nascimento.month or (hoje.month == data_nascimento.month and hoje.day < data_nascimento.day):
+                idade -= 1
+            
+            # Calcular IMC
+            imc = 0
+            if form.altura.data > 0:
+                imc = form.peso.data / (form.altura.data ** 2)
+            
             # Criar novo usuário
             novo_user = User(
                 nome=form.nome.data,
@@ -87,12 +95,15 @@ def registro():
                 senha_hash=generate_password_hash(form.senha.data),
                 altura=form.altura.data,
                 peso=form.peso.data,
-                data_nascimento=form.data_nascimento.data,
+                data_nascimento=data_nascimento,
+                idade=idade,
+                imc=imc,
                 genero=form.genero.data,
                 nivel_atividade=form.nivel_atividade.data,
                 role='user',
                 is_active=True,
-                data_criacao=datetime.utcnow()
+                data_criacao=datetime.utcnow(),
+                ultimo_login=datetime.utcnow()
             )
             
             db.session.add(novo_user)
@@ -129,16 +140,20 @@ def login():
                     flash('Sua conta está desativada. Entre em contato com o administrador.', 'danger')
                     return render_template('login.html', form=form)
                 
+                # Fazer login
                 login_user(user, remember=form.remember.data)
+                
+                # Atualizar último login
+                user.ultimo_login = datetime.utcnow()
+                db.session.commit()
                 
                 # Registrar log
                 log_acao('login', f'Usuário fez login: {user.email}')
                 
                 flash(f'Bem-vindo de volta, {user.nome}!', 'success')
                 
-                # Redirecionar para a página que tentava acessar ou dashboard
-                next_page = request.args.get('next')
-                return redirect(next_page or url_for('main.dashboard'))
+                # Redirecionar para dashboard
+                return redirect(url_for('main.dashboard'))
             else:
                 flash('E-mail ou senha incorretos.', 'danger')
                 
@@ -153,32 +168,33 @@ def login():
 def dashboard():
     """Dashboard do usuário"""
     try:
-        # Obter objetivos do usuário
-        objetivos = current_user.objetivos.all() if hasattr(current_user, 'objetivos') else []
+        # Usar queries diretas em vez de relações para evitar erros
+        objetivos = Objetivo.query.filter_by(user_id=current_user.id).all()
         objetivos_ativos = [obj for obj in objetivos if obj.status == 'ativo']
         
-        # Obter dietas
-        dietas = current_user.dietas.all() if hasattr(current_user, 'dietas') else []
+        dietas = Dieta.query.filter_by(user_id=current_user.id).all()
         dieta_ativa = next((d for d in dietas if d.ativa), None)
         
-        # Obter medidas
-        medidas = []
-        if hasattr(current_user, 'medidas'):
-            medidas = current_user.medidas.order_by(MedidaCorporal.data.desc()).limit(10).all()
+        # Obter medidas recentes
+        medidas = MedidaCorporal.query\
+            .filter_by(user_id=current_user.id)\
+            .order_by(MedidaCorporal.data.desc())\
+            .limit(10)\
+            .all()
         
-        # Calcular treinos ativos
-        treinos_ativos = 0
-        if hasattr(current_user, 'treinos'):
-            treinos_ativos = len(current_user.treinos.filter_by(ativo=True).all())
+        # Contar treinos ativos
+        treinos_ativos = Treino.query\
+            .filter_by(user_id=current_user.id, ativo=True)\
+            .count()
         
-        # Criar dicionário 'dados' para passar ao template
+        # Criar dados para o template
         dados = {
             'usuario': current_user,
             'objetivos_ativos': objetivos_ativos,
             'dieta_ativa': dieta_ativa,
             'treinos_ativos': treinos_ativos,
-            'proximo_treino': 'Hoje 18:00',  # Valor padrão ou implementar lógica real
-            'proxima_refeicao': 'Almoço 12:30',  # Valor padrão
+            'proximo_treino': 'Hoje 18:00',
+            'proxima_refeicao': 'Almoço 12:30',
             'compromissos': [
                 {'titulo': 'Treino de Força', 'hora': '18:00', 'icone': 'bi-activity'},
                 {'titulo': 'Refeição #4', 'hora': '15:00', 'icone': 'bi-egg-fried'},
@@ -186,11 +202,11 @@ def dashboard():
             ]
         }
         
-        # Calcular total de objetivos
+        # Calcular estatísticas
         total_objetivos = len(objetivos)
         objetivos_concluidos = len([obj for obj in objetivos if obj.status == 'concluido'])
         
-        # Gerar insights da IA
+        # Gerar insights
         insights = "Continue registrando seus treinos e dietas para receber insights personalizados."
         
         return render_template('dashboard.html',
@@ -202,31 +218,38 @@ def dashboard():
                              
     except Exception as e:
         flash(f'Erro ao carregar dashboard: {str(e)}', 'danger')
-        return redirect(url_for('main.home'))
+        # Ainda renderiza o template mesmo com erro, mas com dados vazios
+        return render_template('dashboard.html', 
+                             objetivos=[], 
+                             dados={}, 
+                             insights="", 
+                             total_objetivos=0, 
+                             objetivos_concluidos=0)
 
 @main.route('/perfil')
 @login_required
 def perfil():
     """Página de perfil do usuário"""
     try:
-        # Buscar dados recentes
-        objetivos = Objetivo.query.filter_by(
-            user_id=current_user.id
-        ).order_by(Objetivo.data_inicio.desc()).limit(3).all()
+        objetivos = Objetivo.query\
+            .filter_by(user_id=current_user.id)\
+            .order_by(Objetivo.data_inicio.desc())\
+            .limit(3)\
+            .all()
         
-        treinos = Treino.query.filter_by(
-            user_id=current_user.id, 
-            ativo=True
-        ).limit(3).all()
+        treinos = Treino.query\
+            .filter_by(user_id=current_user.id, ativo=True)\
+            .limit(3)\
+            .all()
         
-        dieta_ativa = Dieta.query.filter_by(
-            user_id=current_user.id, 
-            ativa=True
-        ).first()
+        dieta_ativa = Dieta.query\
+            .filter_by(user_id=current_user.id, ativa=True)\
+            .first()
         
-        medidas_recentes = MedidaCorporal.query.filter_by(
-            user_id=current_user.id
-        ).order_by(MedidaCorporal.data.desc()).first()
+        medidas_recentes = MedidaCorporal.query\
+            .filter_by(user_id=current_user.id)\
+            .order_by(MedidaCorporal.data.desc())\
+            .first()
         
         return render_template('perfil.html',
                              usuario=current_user,
@@ -236,7 +259,7 @@ def perfil():
                              medidas_recentes=medidas_recentes)
     except Exception as e:
         flash(f'Erro ao carregar perfil: {str(e)}', 'danger')
-        return redirect(url_for('main.dashboard'))
+        return render_template('perfil.html', usuario=current_user)
 
 # ==================== OBJETIVOS ====================
 @main.route('/objetivos', methods=['GET', 'POST'])
@@ -244,53 +267,49 @@ def perfil():
 def objetivos():
     """Gerenciar objetivos do usuário"""
     form = ObjetivoForm()
-    objetivo_service = ObjetivoService()
     
     # Carregar objetivos existentes
     objetivos = Objetivo.query.filter_by(user_id=current_user.id).all()
     
     if form.validate_on_submit():
         try:
-            # Preparar dados do usuário
-            usuario_data = {
-                "nome": current_user.nome,
-                "idade": current_user.idade,
-                "altura": current_user.altura,
-                "peso": current_user.peso,
-                "genero": current_user.genero,
-                "nivel_atividade": current_user.nivel_atividade,
-                "imc": current_user.imc
-            }
-            
-            if form.usar_ia.data:
-                # Criar objetivo com IA
-                objetivo_data = objetivo_service.criar_objetivo_personalizado(
-                    usuario_data=usuario_data,
-                    objetivo_tipo=form.tipo.data,
-                    prazo_semanas=int(form.prazo.data)
-                )
-            else:
-                # Criar objetivo manual
-                objetivo_data = {
-                    "titulo": form.titulo.data,
-                    "tipo": form.tipo.data,
-                    "meta": form.meta_especifica.data,
-                    "prazo_semanas": int(form.prazo.data)
-                }
-            
             # Calcular data de término
             data_fim = datetime.utcnow() + timedelta(weeks=int(form.prazo.data))
             
-            # Salvar no banco
+            # Criar objetivo
             novo_objetivo = Objetivo(
                 titulo=form.titulo.data,
                 descricao=form.observacoes.data,
                 tipo=form.tipo.data,
                 meta=form.meta_especifica.data,
+                data_inicio=datetime.utcnow(),
                 data_fim=data_fim,
-                detalhes=json.dumps(objetivo_data),
+                status='ativo',
                 user_id=current_user.id
             )
+            
+            # Se usar IA, tentar criar detalhes personalizados
+            if form.usar_ia.data:
+                try:
+                    objetivo_service = ObjetivoService()
+                    usuario_data = {
+                        "nome": current_user.nome,
+                        "idade": current_user.idade,
+                        "altura": current_user.altura,
+                        "peso": current_user.peso,
+                        "genero": current_user.genero,
+                        "nivel_atividade": current_user.nivel_atividade,
+                        "imc": current_user.imc
+                    }
+                    
+                    objetivo_data = objetivo_service.criar_objetivo_personalizado(
+                        usuario_data=usuario_data,
+                        objetivo_tipo=form.tipo.data,
+                        prazo_semanas=int(form.prazo.data)
+                    )
+                    novo_objetivo.detalhes = json.dumps(objeto_data)
+                except Exception as ia_error:
+                    flash(f'Aviso: Não foi possível usar IA para o objetivo. {str(ia_error)}', 'warning')
             
             db.session.add(novo_objetivo)
             db.session.commit()
@@ -323,13 +342,15 @@ def detalhe_objetivo(objetivo_id):
         if objetivo.detalhes:
             try:
                 detalhes = json.loads(objetivo.detalhes)
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError):
                 detalhes = {"error": "Dados corrompidos"}
         
         # Carregar medidas relacionadas
-        medidas = MedidaCorporal.query.filter_by(user_id=current_user.id)\
+        medidas = MedidaCorporal.query\
+            .filter_by(user_id=current_user.id)\
             .filter(MedidaCorporal.data >= objetivo.data_inicio)\
-            .order_by(MedidaCorporal.data).all()
+            .order_by(MedidaCorporal.data)\
+            .all()
         
         return render_template('detalhe_objetivo.html',
                              objetivo=objetivo,
@@ -347,66 +368,80 @@ def dietas():
     form = DietaForm()
     
     # Carregar objetivos para associação
-    objetivos_ativos = Objetivo.query.filter_by(
-        user_id=current_user.id, 
-        status='ativo'
-    ).all()
+    objetivos_ativos = Objetivo.query\
+        .filter_by(user_id=current_user.id, status='ativo')\
+        .all()
     
-    form.objetivo_associado.choices = [('', 'Não associar')] + \
-        [(o.id, o.titulo) for o in objetivos_ativos]
+    # CORREÇÃO: Garantir que o valor padrão seja string vazia
+    form.objetivo_associado.choices = [('0', 'Não associar')] + \
+        [(str(o.id), o.titulo) for o in objetivos_ativos]
+    
+    # Definir valor padrão como string vazia
+    if not form.objetivo_associado.data:
+        form.objetivo_associado.data = ''
     
     # Carregar dietas existentes
-    dietas_ativas = Dieta.query.filter_by(
-        user_id=current_user.id, 
-        ativa=True
-    ).all()
+    dietas_ativas = Dieta.query\
+        .filter_by(user_id=current_user.id, ativa=True)\
+        .all()
     
-    dietas_anteriores = Dieta.query.filter_by(
-        user_id=current_user.id, 
-        ativa=False
-    ).all()
+    dietas_anteriores = Dieta.query\
+        .filter_by(user_id=current_user.id, ativa=False)\
+        .all()
     
     if form.validate_on_submit():
         try:
-            dieta_service = DietaService()
-            
-            # Preparar dados do usuário
-            usuario_data = {
-                "nome": current_user.nome,
-                "idade": current_user.idade,
-                "altura": current_user.altura,
-                "peso": current_user.peso,
-                "genero": current_user.genero,
-                "nivel_atividade": current_user.nivel_atividade,
-                "imc": current_user.imc
+            # Preparar plano básico
+            plano_dieta = {
+                "calorias_diarias": form.calorias_diarias.data or 2000,
+                "tipo": form.tipo_dieta.data,
+                "restricoes": form.restricoes.data,
+                "preferencias": form.preferencias.data
             }
             
+            # Se usar IA, tentar criar detalhes personalizados
             if form.usar_ia.data:
-                # Buscar objetivo associado
-                objetivo_data = {}
-                if form.objetivo_associado.data:
-                    objetivo = Objetivo.query.get(form.objetivo_associado.data)
-                    if objetivo:
-                        objetivo_data = {
-                            "tipo": objetivo.tipo,
-                            "meta": objetivo.meta
-                        }
-                
-                # Gerar dieta com IA
-                plano_dieta = dieta_service.criar_dieta_personalizada(
-                    usuario_data=usuario_data,
-                    objetivo=form.tipo_dieta.data,
-                    restricoes=form.restricoes.data,
-                    preferencias=form.preferencias.data
-                )
-            else:
-                # Dieta básica
-                plano_dieta = {
-                    "calorias_diarias": form.calorias_diarias.data or 2000,
-                    "tipo": form.tipo_dieta.data
-                }
+                try:
+                    dieta_service = DietaService()
+                    usuario_data = {
+                        "nome": current_user.nome,
+                        "idade": current_user.idade,
+                        "altura": current_user.altura,
+                        "peso": current_user.peso,
+                        "genero": current_user.genero,
+                        "nivel_atividade": current_user.nivel_atividade,
+                        "imc": current_user.imc
+                    }
+                    
+                    # Buscar objetivo associado
+                    objetivo_data = {}
+                    if form.objetivo_associado.data and form.objetivo_associado.data != '':
+                        objetivo = Objetivo.query.get(int(form.objetivo_associado.data))
+                        if objetivo:
+                            objetivo_data = {
+                                "tipo": objetivo.tipo,
+                                "meta": objetivo.meta
+                            }
+                    
+                    plano_ia = dieta_service.criar_dieta_personalizada(
+                        usuario_data=usuario_data,
+                        objetivo=form.tipo_dieta.data,
+                        restricoes=form.restricoes.data,
+                        preferencias=form.preferencias.data
+                    )
+                    plano_dieta.update(plano_ia)
+                except Exception as ia_error:
+                    flash(f'Aviso: Não foi possível usar IA para a dieta. {str(ia_error)}', 'warning')
             
-            # Salvar no banco
+            # Converter objetivo_associado para inteiro ou None
+            objetivo_associado = None
+            if form.objetivo_associado.data and form.objetivo_associado.data != '':
+                try:
+                    objetivo_associado = int(form.objetivo_associado.data)
+                except (ValueError, TypeError):
+                    objetivo_associado = None
+            
+            # Salvar dieta
             nova_dieta = Dieta(
                 nome=form.nome.data,
                 objetivo=form.tipo_dieta.data,
@@ -414,11 +449,10 @@ def dietas():
                 plano_semanal=json.dumps(plano_dieta.get('plano_semanal', {})),
                 lista_compras=json.dumps(plano_dieta.get('lista_compras', [])),
                 receitas=json.dumps(plano_dieta.get('receitas_especiais', [])),
-                user_id=current_user.id
+                user_id=current_user.id,
+                objetivo_associado=objetivo_associado,
+                ativa=True
             )
-            
-            if form.objetivo_associado.data:
-                nova_dieta.objetivo_associado = form.objetivo_associado.data
             
             db.session.add(nova_dieta)
             db.session.commit()
@@ -457,19 +491,19 @@ def detalhe_dieta(dieta_id):
         try:
             if dieta.plano_semanal:
                 plano_semanal = json.loads(dieta.plano_semanal)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             plano_semanal = {"error": "Dados do plano semanal corrompidos"}
         
         try:
             if dieta.lista_compras:
                 lista_compras = json.loads(dieta.lista_compras)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             lista_compras = ["Erro ao carregar lista de compras"]
         
         try:
             if dieta.receitas:
                 receitas = json.loads(dieta.receitas)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             receitas = ["Erro ao carregar receitas"]
         
         return render_template('detalhe_dieta.html',
@@ -503,7 +537,7 @@ def medidas():
             
             if form.foto_frontal.data:
                 foto = form.foto_frontal.data
-                filename = f"frontal_{current_user.id}_{datetime.now().timestamp()}.jpg"
+                filename = f"frontal_{current_user.id}_{int(datetime.now().timestamp())}.jpg"
                 # Certifique-se que o diretório existe
                 upload_dir = os.path.join('app', 'static', 'uploads')
                 os.makedirs(upload_dir, exist_ok=True)
@@ -512,7 +546,7 @@ def medidas():
             
             if form.foto_lateral.data:
                 foto = form.foto_lateral.data
-                filename = f"lateral_{current_user.id}_{datetime.now().timestamp()}.jpg"
+                filename = f"lateral_{current_user.id}_{int(datetime.now().timestamp())}.jpg"
                 upload_dir = os.path.join('app', 'static', 'uploads')
                 os.makedirs(upload_dir, exist_ok=True)
                 foto_lateral_path = os.path.join('static/uploads', filename)
@@ -535,12 +569,16 @@ def medidas():
                 user_id=current_user.id
             )
             
-            # Atualizar peso do usuário
-            if form.peso.data != current_user.peso:
-                current_user.peso = form.peso.data
+            # Atualizar dados do usuário
+            current_user.peso = form.peso.data
+            if form.altura.data:
+                current_user.altura = form.altura.data
+            
+            # Atualizar IMC
+            if current_user.altura > 0:
+                current_user.imc = current_user.peso / (current_user.altura ** 2)
             
             db.session.add(novas_medidas)
-            db.session.add(current_user)
             db.session.commit()
             
             log_acao('registrar_medidas', f'Registrou novas medidas: {form.peso.data}kg')
@@ -592,13 +630,13 @@ def progresso():
                              variacao_imc=variacao_imc)
     except Exception as e:
         flash(f'Erro ao carregar progresso: {str(e)}', 'danger')
-        return redirect(url_for('main.dashboard'))
+        return render_template('progresso.html', medidas=[], objetivos=[])
 
 # ==================== TREINOS ====================
 @main.route('/gerar_treino', methods=['GET', 'POST'])
 @login_required
 def gerar_treino():
-    """Gerar treino personalizado (sistema base)"""
+    """Gerar treino personalizado"""
     form = GerarTreinoForm()
     
     if form.validate_on_submit():
@@ -607,9 +645,15 @@ def gerar_treino():
             objetivo = form.objetivo.data
             dias = form.dias.data
             
-            treino = gerar_treino_personalizado(nivel, objetivo, dias, usar_ia=False)
+            # Gerar treino
+            treino = gerar_treino_personalizado(
+                nivel=nivel,
+                objetivo=objetivo,
+                dias=dias,
+                usar_ia=False
+            )
             
-            # Salvar treino gerado
+            # Salvar treino
             novo_treino = Treino(
                 nome=f"Treino {nivel}-{objetivo}",
                 tipo=objetivo,
@@ -617,7 +661,8 @@ def gerar_treino():
                 nivel=nivel,
                 dias_semana=int(dias),
                 detalhes=json.dumps(treino),
-                user_id=current_user.id
+                user_id=current_user.id,
+                ativo=True
             )
             
             db.session.add(novo_treino)
@@ -644,38 +689,39 @@ def gerar_treino_ia():
             nivel = form.nivel.data
             objetivo = form.objetivo.data
             dias = form.dias.data
-            usar_ia = True
-            historico = form.historico.data if hasattr(form, 'historico') else ""
             
-            # Buscar histórico do usuário
-            avaliacoes = Avaliacao.query.filter_by(user_id=current_user.id)\
-                .order_by(Avaliacao.data.desc()).all()
+            # Buscar histórico
+            avaliacoes = Avaliacao.query\
+                .filter_by(user_id=current_user.id)\
+                .order_by(Avaliacao.data.desc())\
+                .all()
             
             historico_completo = f"""
             Usuário: {current_user.nome}
             Altura: {current_user.altura}m
             Peso atual: {current_user.peso}kg
             Histórico de avaliações: {[(a.peso, a.data.strftime('%Y-%m-%d')) for a in avaliacoes[:3]]}
-            Informações adicionais: {historico}
             """
             
+            # Gerar treino com IA
             treino = gerar_treino_personalizado(
                 nivel=nivel,
                 objetivo=objetivo,
                 dias=dias,
-                usar_ia=usar_ia,
+                usar_ia=True,
                 historico=historico_completo
             )
             
-            # Salvar treino gerado no banco
+            # Salvar treino
             novo_treino = Treino(
-                nome=f"Treino {nivel}-{objetivo}",
+                nome=f"Treino {nivel}-{objetivo} (IA)",
                 tipo=objetivo,
                 objetivo=objetivo,
                 nivel=nivel,
                 dias_semana=int(dias),
                 detalhes=json.dumps(treino),
-                user_id=current_user.id
+                user_id=current_user.id,
+                ativo=True
             )
             
             db.session.add(novo_treino)
@@ -685,61 +731,15 @@ def gerar_treino_ia():
             
             return render_template('treino_gerado.html',
                                  treino=treino,
-                                 usar_ia=usar_ia,
-                                 form=form)
+                                 usar_ia=True)
                                  
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao gerar treino com IA: {str(e)}', 'danger')
+            # Fallback para treino sem IA
+            return redirect(url_for('main.gerar_treino'))
     
     return render_template('gerar_treino.html', form=form)
-
-@main.route('/analise_ia')
-@login_required
-def analise_ia():
-    """Análise de desempenho com IA"""
-    try:
-        from .gemini_service import GeminiService
-        
-        avaliacoes = Avaliacao.query.filter_by(user_id=current_user.id).all()
-        medidas = MedidaCorporal.query.filter_by(user_id=current_user.id).all()
-        
-        dados_usuario = {
-            "nome": current_user.nome,
-            "idade": current_user.idade,
-            "altura": current_user.altura,
-            "peso_atual": current_user.peso,
-            "genero": current_user.genero,
-            "nivel_atividade": current_user.nivel_atividade,
-            "historico_peso": [{"peso": a.peso, "data": a.data.strftime('%Y-%m-%d')} for a in avaliacoes],
-            "historico_medidas": [{"cintura": m.cintura, "data": m.data.strftime('%Y-%m-%d')} for m in medidas if m.cintura],
-            "imc_atual": current_user.imc if hasattr(current_user, 'imc') else 0
-        }
-        
-        gemini = GeminiService()
-        analise = gemini.analisar_desempenho(str(dados_usuario))
-        
-        return render_template('analise_ia.html',
-                             analise=analise,
-                             dados=dados_usuario)
-    except ImportError:
-        flash('Serviço de IA não disponível no momento.', 'warning')
-        return redirect(url_for('main.dashboard'))
-    except Exception as e:
-        flash(f'Erro ao gerar análise: {str(e)}', 'danger')
-        return redirect(url_for('main.dashboard'))
-
-# ==================== ADMIN ====================
-@main.route('/admin/usuarios')
-@admin_required
-def ver_usuarios():
-    """Lista de usuários (admin)"""
-    try:
-        usuarios = User.query.all()
-        return render_template('admin/usuarios_lista.html', usuarios=usuarios)
-    except Exception as e:
-        flash(f'Erro ao carregar usuários: {str(e)}', 'danger')
-        return redirect(url_for('main.dashboard'))
 
 # ==================== UTILITÁRIOS ====================
 @main.route('/logout')
@@ -784,9 +784,9 @@ def api_medidas():
         
         dados = {
             'datas': [m.data.strftime('%Y-%m-%d') for m in medidas],
-            'pesos': [m.peso for m in medidas],
-            'cinturas': [m.cintura for m in medidas if m.cintura],
-            'quadris': [m.quadril for m in medidas if m.quadril]
+            'pesos': [float(m.peso) for m in medidas],
+            'cinturas': [float(m.cintura) for m in medidas if m.cintura is not None],
+            'quadris': [float(m.quadril) for m in medidas if m.quadril is not None]
         }
         
         return jsonify(dados)
@@ -799,16 +799,14 @@ def api_estatisticas():
     """API para estatísticas do usuário"""
     try:
         total_objetivos = Objetivo.query.filter_by(user_id=current_user.id).count()
-        objetivos_concluidos = Objetivo.query.filter_by(
-            user_id=current_user.id,
-            status='concluido'
-        ).count()
+        objetivos_concluidos = Objetivo.query\
+            .filter_by(user_id=current_user.id, status='concluido')\
+            .count()
         
         total_treinos = Treino.query.filter_by(user_id=current_user.id).count()
-        treinos_ativos = Treino.query.filter_by(
-            user_id=current_user.id,
-            ativo=True
-        ).count()
+        treinos_ativos = Treino.query\
+            .filter_by(user_id=current_user.id, ativo=True)\
+            .count()
         
         primeira_medida = MedidaCorporal.query\
             .filter_by(user_id=current_user.id)\
@@ -820,7 +818,7 @@ def api_estatisticas():
             .order_by(MedidaCorporal.data.desc())\
             .first()
         
-        # Calcular porcentagem com segurança
+        # Calcular porcentagem
         porcentagem_objetivos = 0
         if total_objetivos > 0:
             porcentagem_objetivos = (objetivos_concluidos / total_objetivos) * 100
@@ -836,9 +834,9 @@ def api_estatisticas():
                 'ativos': treinos_ativos
             },
             'peso': {
-                'inicial': primeira_medida.peso if primeira_medida else current_user.peso,
-                'atual': ultima_medida.peso if ultima_medida else current_user.peso,
-                'variacao': (ultima_medida.peso - primeira_medida.peso) if primeira_medida and ultima_medida else 0
+                'inicial': float(primeira_medida.peso) if primeira_medida else float(current_user.peso),
+                'atual': float(ultima_medida.peso) if ultima_medida else float(current_user.peso),
+                'variacao': float(ultima_medida.peso - primeira_medida.peso) if primeira_medida and ultima_medida else 0
             }
         }
         
